@@ -1,0 +1,37 @@
+#+TITLE: Bluepill: a GCC/CMake build environment ..
+#+HTML_HEAD: <link rel="stylesheet" type="text/css" href="../static/worg.css" />
+#+options: num:nil
+# This will export a README.org file for Github, so that people that land in my repo know where to find the relevant webpage
+#+BEGIN_SRC org :tangle README.org :exports none
+  see description [[http://geokon-gh.github.io/bluepill/index.html][here]]
+#+END_SRC
+
+* Intro
+In this guide we will setup a simple minimal blinky for the Bluepill. I will have two versions - one using the CMSIS and one using the LL (explained below). The embedded community seems a bit allergic to CMake - but I'm quite allergic to Make, so hopefully this guide will provide something new.
+
+The blessed way of building things for the STM32 series chips is using their wizards - but it's possible to get the whole thing running just using GCC and OpenOCD - and that's what we're gunna try to get working by the end of this guide. People have ofcourse already done this before:
+
+** Prior Art
+
+- =dwelch67= has some great extremely minimal setups for the blue pilll on [[https://github.com/dwelch67/stm32_samples/tree/master/STM32F103C8T6][his github]]. He describes them extensively in a [[https://electronics.stackexchange.com/questions/30736/stm32f2-makefile-linker-script-and-start-up-file-combination-without-commercia][few places on Stack Overflow]]. Basically here he rolls his own .. everything. It's very greybeard. All the code is in your face - no libraries. Straight writting to registers. Definitely take a look!
+
+- =PurpleAlien= has another setup - which is very close to what I'm doing. He described it [[https://www.purplealienplanet.com/node/69][on his website]] and the code is on the [[https://github.com/PurpleAlien/stm32-minimal][his github]]. It's a slightly different chip - but the steps should work almost identically for the =bluepill=.
+
+* The STM Libraries
+
+These are all provided from STM on [[https://www.st.com/content/st_com/en/products/embedded-software/mcus-embedded-software/stm32-embedded-software/stm32cube-mcu-packages/stm32cubef1.html][their website]]. You unfortunately have to create an account and some garbage to grab the folder - but it will include all the libraries and documentations you will need. I really recommend you download it and read the documentation - but here is a quick digest:
+
+After unzipping the file you will see in ~STM32Cube_FW_F1_V1.6.0/Drivers~ 3 folders:
+
+- The *BSP* has board specific peripheral libraries.. since we aren't using a board from STM - this really doesn't concern us.
+
+- The *CMSIS* ( Cortex Microcontroller Software Interface Standard ) : This library comes from ARM. It's split into several semi-independent components and provides a common base for all ARM devices (independent of vendor). Since we want to get a basic example running, we'll just focus on *CMSIS-CORE*.
+
+ - The core is the interface to the hardware specified by ARM (see ~STM32F4xx_DSP_StdPeriph_Lib_V1.7.0/Libraries/CMSIS/Include/~). In essence this is a header only library. If you look at some of the files you'll see that the functions simply map to one or two lines of ARM assembly. Simple things like "where is the stack pointer?", "add these two numbers", "get a value from this memory address". It allows the developer to omit writing the assembly by hand and to stay in the C/C++ world. All these instructions are standard across ARM chips, so naturally this interface is also standard and portable.
+
+- The *HAL* that comes from STM is the standard *Hardware Abstraction Layer*. Parts will work across the whole range of STM decides and parts will be chip/peripheral specific. It will be making some simplifying assumptions and do some stuff more automatically for you. I'm going to skip setting this up. Blinking a light should be pretty simple - so I'm shooting to get it working with simpler APIs
+
+Finally - hidden inside of the *HAL* folder you will see files that are names =stm32f1xx_ll_*.c/h=. These actually form a seperate sub-library of sorts called the  *LL* API (for *Low Level*). As far as I can see it's in large partconvenience wrapper around ARM's *CMSIS*. I will try this layer on it's own as well and see how it works. This isn't meant to run on other ARM hardware as far as I can tell.
+
+It's probably worth mentioning that in ~STM32Cube_FW_F1_V1.6.0/Middlewares~ there are additional libraries that sorta live on top of all of this and do more complicated stuff like TCP/IP USB..stuff and Filesystem things. Basically things that are kinda complicated you probably want to avoid writing yourself. I'm completely skipping this :)
+
