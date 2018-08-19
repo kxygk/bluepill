@@ -1,0 +1,3 @@
+[submodule "stm32f1-ll"]
+	path = stm32f1-ll
+	url = https://github.com/geokon-gh/stm32f1-ll.git
