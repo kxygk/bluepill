@@ -169,14 +169,27 @@ Canonically this is done in a separate file so that you can subsitute other poss
 #+END_SRC
 If you skip writing a toolchain file then CMake will default to the system compiler and things will start to slowly go wrong for you (it generally doesn't blow up into your face here)
 
-We then also need to let the compiler know our target architecture
+We then also need to let the compiler know our target architecture and some compiler options (taken from [[https://github.com/PurpleAlien/stm32-minimal/blob/master/Makefile][PurpleAlien]])
 
 #+BEGIN_SRC cmake :tangle CMakeLists.txt
-    target_compile_options(ll PUBLIC
-      -mthumb
-      -mcpu=cortex-m3
-      -mfloat-abi=soft
-      -mlittle-endian)
+  target_compile_options(blinky.elf PUBLIC
+    -Wall 
+    -g 
+    -std=gnu99 
+    -Os
+    -mthumb
+    -mcpu=cortex-m3
+    -mfloat-abi=soft
+    -mlittle-endian
+    -ffunction-sections 
+    -fdata-sections
+    -Werror 
+    -Wstrict-prototypes 
+    -Warray-bounds 
+    -fno-strict-aliasing 
+    -Wno-unused-const-variable 
+    -specs=nano.specs 
+    -specs=nosys.specs)
 #+END_SRC
 
 ** The Linker Script
@@ -190,11 +203,12 @@ On a simple microcontroller there is no operating system to manage the memory, a
 Here CMake is a deficient, but you can tell it about a linker script with the following lines:
 
 #+BEGIN_SRC cmake :tangle CMakeLists.txt
-    set_target_properties(
-      blinky.elf 
-      PROPERTIES 
-      LINK_FLAGS 
-      "-TSTM32F103RBTx_FLASH.ld")
+        set_target_properties(
+          blinky.elf 
+          PROPERTIES 
+          LINK_FLAGS 
+          "-T${PROJECT_SOURCE_DIR}/STM32F103RBTx_FLASH.ld \
+           -Wl,--gc-sections")
 #+END_SRC
 
 I'm appending this to the =CMakeLists.txt=, but it's maybe something that should be in the toolchain file.
@@ -203,4 +217,3 @@ I'm appending this to the =CMakeLists.txt=, but it's maybe something that should
 #+BEGIN_QUOTE
 *Note*:in ~STM32Cube_FW_F1_V1.6.0/Middlewares~ there are additional libraries that sorta live on top of all of this and do more complicated stuff like TCP/IP USB..stuff and Filesystem things. Basically things that are kinda complicated you probably want to avoid writing yourself. I'm completely skipping this :)
 #+END_QUOTE
-

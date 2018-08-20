@@ -4,7 +4,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
 <head>
 <title>Bluepill: a GCC/CMake build environment ..</title>
-<!-- 2018-08-19 Sun 13:52 -->
+<!-- 2018-08-20 Mon 18:47 -->
 <meta  http-equiv="Content-Type" content="text/html;charset=utf-8" />
 <meta  name="generator" content="Org-mode" />
 <meta  name="author" content="George Kontsevich" />
@@ -407,16 +407,29 @@ If you skip writing a toolchain file then CMake will default to the system compi
 </p>
 
 <p>
-We then also need to let the compiler know our target architecture
+We then also need to let the compiler know our target architecture and some compiler options (taken from <a href="https://github.com/PurpleAlien/stm32-minimal/blob/master/Makefile">PurpleAlien</a>)
 </p>
 
 <div class="org-src-container">
 
-<pre class="src src-cmake"><span style="color: #ef2929;">target_compile_options</span>(ll PUBLIC
+<pre class="src src-cmake"><span style="color: #ef2929;">target_compile_options</span>(blinky.elf PUBLIC
+  -Wall 
+  -g 
+  -std=gnu99 
+  -Os
   -mthumb
   -mcpu=cortex-m3
   -mfloat-abi=soft
-  -mlittle-endian)
+  -mlittle-endian
+  -ffunction-sections 
+  -fdata-sections
+  -Werror 
+  -Wstrict-prototypes 
+  -Warray-bounds 
+  -fno-strict-aliasing 
+  -Wno-unused-const-variable 
+  -specs=nano.specs 
+  -specs=nosys.specs)
 </pre>
 </div>
 </div>
@@ -447,7 +460,8 @@ Here CMake is a deficient, but you can tell it about a linker script with the fo
   blinky.elf 
   PROPERTIES 
   LINK_FLAGS 
-  <span style="color: #ff1f8b;">"-TSTM32F103RBTx_FLASH.ld"</span>)
+  <span style="color: #ff1f8b;">"-T${</span><span style="color: #ff8700;">PROJECT_SOURCE_DIR</span><span style="color: #ff1f8b;">}/STM32F103RBTx_FLASH.ld \</span>
+<span style="color: #ff1f8b;">   -Wl,--gc-sections"</span>)
 </pre>
 </div>
 
@@ -467,7 +481,7 @@ I'm appending this to the <code>CMakeLists.txt</code>, but it's maybe something 
 </div>
 <div id="postamble" class="status">
 <p class="author">Author: George Kontsevich</p>
-<p class="date">Created: 2018-08-19 Sun 13:52</p>
+<p class="date">Created: 2018-08-20 Mon 18:47</p>
 <p class="creator"><a href="http://www.gnu.org/software/emacs/">Emacs</a> 25.2.2 (<a href="http://orgmode.org">Org</a> mode 8.2.10)</p>
 <p class="validation"><a href="http://validator.w3.org/check?uri=referer">Validate</a></p>
 </div>

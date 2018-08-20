@@ -14,14 +14,28 @@ target_include_directories(blinky.elf PUBLIC inc)
 
 target_link_libraries( blinky.elf ll )
 
-target_compile_options(ll PUBLIC
+target_compile_options(blinky.elf PUBLIC
+  -Wall 
+  -g 
+  -std=gnu99 
+  -Os
   -mthumb
   -mcpu=cortex-m3
   -mfloat-abi=soft
-  -mlittle-endian)
+  -mlittle-endian
+  -ffunction-sections 
+  -fdata-sections
+  -Werror 
+  -Wstrict-prototypes 
+  -Warray-bounds 
+  -fno-strict-aliasing 
+  -Wno-unused-const-variable 
+  -specs=nano.specs 
+  -specs=nosys.specs)
 
 set_target_properties(
   blinky.elf 
   PROPERTIES 
   LINK_FLAGS 
-  "-TSTM32F103RBTx_FLASH.ld")
+  "-T${PROJECT_SOURCE_DIR}/STM32F103RBTx_FLASH.ld \
+   -Wl,--gc-sections")
