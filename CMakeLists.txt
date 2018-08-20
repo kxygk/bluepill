@@ -1,20 +1,21 @@
 
 cmake_minimum_required(VERSION 3.0)
+project(blinky)
 
 enable_language(ASM)
 set(STARTUP_FILE "startup_stm32f103xb.s")
 
 add_subdirectory(stm32f1-ll)
 
-add_executable(blinky.elf ${STARTUP_FILE} 
+add_executable(${PROJECT_NAME}.elf ${STARTUP_FILE} 
   src/main.c
   src/stm32f1xx_it.c
   src/system_stm32f1xx.c)
-target_include_directories(blinky.elf PUBLIC inc)
+target_include_directories(${PROJECT_NAME}.elf PUBLIC inc)
 
-target_link_libraries( blinky.elf ll )
+target_link_libraries(${PROJECT_NAME}.elf ll )
 
-target_compile_options(blinky.elf PUBLIC
+target_compile_options(${PROJECT_NAME}.elf PUBLIC
   -Wall 
   -g 
   -std=gnu99 
@@ -34,7 +35,7 @@ target_compile_options(blinky.elf PUBLIC
   -specs=nosys.specs)
 
 set_target_properties(
-  blinky.elf 
+  ${PROJECT_NAME}.elf 
   PROPERTIES 
   LINK_FLAGS 
   "-T${PROJECT_SOURCE_DIR}/STM32F103RBTx_FLASH.ld \

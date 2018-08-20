@@ -4,7 +4,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
 <head>
 <title>Bluepill: a GCC/CMake build environment ..</title>
-<!-- 2018-08-20 Mon 18:47 -->
+<!-- 2018-08-20 Mon 18:55 -->
 <meta  http-equiv="Content-Type" content="text/html;charset=utf-8" />
 <meta  name="generator" content="Org-mode" />
 <meta  name="author" content="George Kontsevich" />
@@ -174,6 +174,7 @@ starting our CMake file we write out the usual
 <div class="org-src-container">
 
 <pre class="src src-cmake"><span style="color: #ef2929;">cmake_minimum_required</span>(VERSION 3.0)
+<span style="color: #ef2929;">project</span>(blinky)
 </pre>
 </div>
 
@@ -354,11 +355,11 @@ Once there we can just add it as a special executable into our cmake
 </p>
 <div class="org-src-container">
 
-<pre class="src src-cmake"><span style="color: #ef2929;">add_executable</span>(blinky.elf ${<span style="color: #ff8700;">STARTUP_FILE</span>} 
+<pre class="src src-cmake"><span style="color: #ef2929;">add_executable</span>(${<span style="color: #ff8700;">PROJECT_NAME</span>}.elf ${<span style="color: #ff8700;">STARTUP_FILE</span>} 
   src/main.c
   src/stm32f1xx_it.c
   src/system_stm32f1xx.c)
-<span style="color: #ef2929;">target_include_directories</span>(blinky.elf PUBLIC inc)
+<span style="color: #ef2929;">target_include_directories</span>(${<span style="color: #ff8700;">PROJECT_NAME</span>}.elf PUBLIC inc)
 </pre>
 </div>
 <p>
@@ -366,7 +367,7 @@ and then link it to our library
 </p>
 <div class="org-src-container">
 
-<pre class="src src-cmake"><span style="color: #ef2929;">target_link_libraries</span>( blinky.elf ll )
+<pre class="src src-cmake"><span style="color: #ef2929;">target_link_libraries</span>(${<span style="color: #ff8700;">PROJECT_NAME</span>}.elf ll )
 </pre>
 </div>
 </div>
@@ -412,7 +413,7 @@ We then also need to let the compiler know our target architecture and some comp
 
 <div class="org-src-container">
 
-<pre class="src src-cmake"><span style="color: #ef2929;">target_compile_options</span>(blinky.elf PUBLIC
+<pre class="src src-cmake"><span style="color: #ef2929;">target_compile_options</span>(${<span style="color: #ff8700;">PROJECT_NAME</span>}.elf PUBLIC
   -Wall 
   -g 
   -std=gnu99 
@@ -457,7 +458,7 @@ Here CMake is a deficient, but you can tell it about a linker script with the fo
 <div class="org-src-container">
 
 <pre class="src src-cmake"><span style="color: #ef2929;">set_target_properties</span>(
-  blinky.elf 
+  ${<span style="color: #ff8700;">PROJECT_NAME</span>}.elf 
   PROPERTIES 
   LINK_FLAGS 
   <span style="color: #ff1f8b;">"-T${</span><span style="color: #ff8700;">PROJECT_SOURCE_DIR</span><span style="color: #ff1f8b;">}/STM32F103RBTx_FLASH.ld \</span>
@@ -481,7 +482,7 @@ I'm appending this to the <code>CMakeLists.txt</code>, but it's maybe something 
 </div>
 <div id="postamble" class="status">
 <p class="author">Author: George Kontsevich</p>
-<p class="date">Created: 2018-08-20 Mon 18:47</p>
+<p class="date">Created: 2018-08-20 Mon 18:55</p>
 <p class="creator"><a href="http://www.gnu.org/software/emacs/">Emacs</a> 25.2.2 (<a href="http://orgmode.org">Org</a> mode 8.2.10)</p>
 <p class="validation"><a href="http://validator.w3.org/check?uri=referer">Validate</a></p>
 </div>

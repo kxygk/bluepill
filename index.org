@@ -12,7 +12,8 @@ In this guide we will setup a simple minimal blinky for the Bluepill. I will hav
 starting our CMake file we write out the usual
 
 #+BEGIN_SRC cmake :tangle CMakeLists.txt
-    cmake_minimum_required(VERSION 3.0)
+  cmake_minimum_required(VERSION 3.0)
+  project(blinky)
 #+END_SRC
 
 The blessed way of building things for the STM32 series chips is using their wizards - but it's possible to get the whole thing running just using GCC and OpenOCD - and that's what we're gunna try to get working by the end of this guide. People have ofcourse already done this before:
@@ -133,15 +134,15 @@ int main(void){
 
 Once there we can just add it as a special executable into our cmake
 #+BEGIN_SRC cmake :tangle CMakeLists.txt
-  add_executable(blinky.elf ${STARTUP_FILE} 
+  add_executable(${PROJECT_NAME}.elf ${STARTUP_FILE} 
     src/main.c
     src/stm32f1xx_it.c
     src/system_stm32f1xx.c)
-  target_include_directories(blinky.elf PUBLIC inc)
+  target_include_directories(${PROJECT_NAME}.elf PUBLIC inc)
 #+END_SRC
 and then link it to our library
 #+BEGIN_SRC cmake :tangle CMakeLists.txt
-  target_link_libraries( blinky.elf ll )
+  target_link_libraries(${PROJECT_NAME}.elf ll )
 #+END_SRC
 ** The toolchain
 
@@ -172,7 +173,7 @@ If you skip writing a toolchain file then CMake will default to the system compi
 We then also need to let the compiler know our target architecture and some compiler options (taken from [[https://github.com/PurpleAlien/stm32-minimal/blob/master/Makefile][PurpleAlien]])
 
 #+BEGIN_SRC cmake :tangle CMakeLists.txt
-  target_compile_options(blinky.elf PUBLIC
+  target_compile_options(${PROJECT_NAME}.elf PUBLIC
     -Wall 
     -g 
     -std=gnu99 
@@ -204,7 +205,7 @@ Here CMake is a deficient, but you can tell it about a linker script with the fo
 
 #+BEGIN_SRC cmake :tangle CMakeLists.txt
         set_target_properties(
-          blinky.elf 
+          ${PROJECT_NAME}.elf 
           PROPERTIES 
           LINK_FLAGS 
           "-T${PROJECT_SOURCE_DIR}/STM32F103RBTx_FLASH.ld \
