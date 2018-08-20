@@ -220,9 +220,9 @@ I also added two more linker options (you can see it's a linker option by the =-
 - =--gc-sections= this tells the linker to remove unused code/data from the final executable. There is a pesky ~_exit()~ function referrence that will often get slipped into your executable by the compiler. B/c we are running on a microcontroller the code never exits (it can't quit and hand off executation to an OS after all!) so this exit needs to be removed by the linker. Otherwise the linker will complain you never defined an exit function.
 
 - =-Map= prints a link map:
-   1 - Where object files and symbols are mapped into memory.
-   2 - How common symbols are allocated.
-   3 - All archive members included in the link, with a mention of the symbol which caused the archive member to be brought in.
+   + Where object files and symbols are mapped into memory.
+   + How common symbols are allocated.
+   + All archive members included in the link, with a mention of the symbol which caused the archive member to be brought in.
 
 The link map is like a high-level overview of how your code looks like
 
@@ -231,3 +231,4 @@ More linker options are explained in details here: https://ftp.gnu.org/old-gnu/M
 #+BEGIN_QUOTE
 *Note*:in ~STM32Cube_FW_F1_V1.6.0/Middlewares~ there are additional libraries that sorta live on top of all of this and do more complicated stuff like TCP/IP USB..stuff and Filesystem things. Basically things that are kinda complicated you probably want to avoid writing yourself. I'm completely skipping this :)
 #+END_QUOTE
+
