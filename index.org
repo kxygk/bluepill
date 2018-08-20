@@ -192,7 +192,7 @@ We then also need to let the compiler know our target architecture and some comp
     -specs=nano.specs 
     -specs=nosys.specs)
 #+END_SRC
-
+*TODO* Explain all of these...
 ** The Linker Script
 
 The last bit to get everything working together is a special script that we feed to the linker (specified above in the toolchain)
@@ -209,11 +209,24 @@ Here CMake is a deficient, but you can tell it about a linker script with the fo
           PROPERTIES 
           LINK_FLAGS 
           "-T${PROJECT_SOURCE_DIR}/STM32F103RBTx_FLASH.ld \
-           -Wl,--gc-sections")
+           -Wl,--gc-sections \
+           -Wl,-Map=${PROJECT_NAME}.map")
 #+END_SRC
 
 I'm appending this to the =CMakeLists.txt=, but it's maybe something that should be in the toolchain file.
 
+I also added two more linker options (you can see it's a linker option by the =-Wl= before it)
+
+- =--gc-sections= this tells the linker to remove unused code/data from the final executable. There is a pesky ~_exit()~ function referrence that will often get slipped into your executable by the compiler. B/c we are running on a microcontroller the code never exits (it can't quit and hand off executation to an OS after all!) so this exit needs to be removed by the linker. Otherwise the linker will complain you never defined an exit function.
+
+- =-Map= prints a link map:
+   1 - Where object files and symbols are mapped into memory.
+   2 - How common symbols are allocated.
+   3 - All archive members included in the link, with a mention of the symbol which caused the archive member to be brought in.
+
+The link map is like a high-level overview of how your code looks like
+
+More linker options are explained in details here: https://ftp.gnu.org/old-gnu/Manuals/ld-2.9.1/html_node/ld_3.html
 
 #+BEGIN_QUOTE
 *Note*:in ~STM32Cube_FW_F1_V1.6.0/Middlewares~ there are additional libraries that sorta live on top of all of this and do more complicated stuff like TCP/IP USB..stuff and Filesystem things. Basically things that are kinda complicated you probably want to avoid writing yourself. I'm completely skipping this :)

@@ -4,7 +4,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
 <head>
 <title>Bluepill: a GCC/CMake build environment ..</title>
-<!-- 2018-08-20 Mon 18:55 -->
+<!-- 2018-08-20 Mon 19:10 -->
 <meta  http-equiv="Content-Type" content="text/html;charset=utf-8" />
 <meta  name="generator" content="Org-mode" />
 <meta  name="author" content="George Kontsevich" />
@@ -433,9 +433,11 @@ We then also need to let the compiler know our target architecture and some comp
   -specs=nosys.specs)
 </pre>
 </div>
+<p>
+<b>TODO</b> Explain all of these&#x2026;
+</p>
 </div>
 </div>
-
 <div id="outline-container-sec-2-5" class="outline-3">
 <h3 id="sec-2-5">The Linker Script</h3>
 <div class="outline-text-3" id="text-2-5">
@@ -462,7 +464,8 @@ Here CMake is a deficient, but you can tell it about a linker script with the fo
   PROPERTIES 
   LINK_FLAGS 
   <span style="color: #ff1f8b;">"-T${</span><span style="color: #ff8700;">PROJECT_SOURCE_DIR</span><span style="color: #ff1f8b;">}/STM32F103RBTx_FLASH.ld \</span>
-<span style="color: #ff1f8b;">   -Wl,--gc-sections"</span>)
+<span style="color: #ff1f8b;">   -Wl,--gc-sections \</span>
+<span style="color: #ff1f8b;">   -Wl,-Map=${</span><span style="color: #ff8700;">PROJECT_NAME</span><span style="color: #ff1f8b;">}.map"</span>)
 </pre>
 </div>
 
@@ -470,6 +473,28 @@ Here CMake is a deficient, but you can tell it about a linker script with the fo
 I'm appending this to the <code>CMakeLists.txt</code>, but it's maybe something that should be in the toolchain file.
 </p>
 
+<p>
+I also added two more linker options (you can see it's a linker option by the <code>-Wl</code> before it)
+</p>
+
+<ul class="org-ul">
+<li><code>--gc-sections</code> this tells the linker to remove unused code/data from the final executable. There is a pesky <code>_exit()</code> function referrence that will often get slipped into your executable by the compiler. B/c we are running on a microcontroller the code never exits (it can't quit and hand off executation to an OS after all!) so this exit needs to be removed by the linker. Otherwise the linker will complain you never defined an exit function.
+</li>
+
+<li><code>-Map</code> prints a link map:
+1 - Where object files and symbols are mapped into memory.
+2 - How common symbols are allocated.
+3 - All archive members included in the link, with a mention of the symbol which caused the archive member to be brought in.
+</li>
+</ul>
+
+<p>
+The link map is like a high-level overview of how your code looks like
+</p>
+
+<p>
+More linker options are explained in details here: <a href="https://ftp.gnu.org/old-gnu/Manuals/ld-2.9.1/html_node/ld_3.html">https://ftp.gnu.org/old-gnu/Manuals/ld-2.9.1/html_node/ld_3.html</a>
+</p>
 
 <blockquote>
 <p>
@@ -482,7 +507,7 @@ I'm appending this to the <code>CMakeLists.txt</code>, but it's maybe something 
 </div>
 <div id="postamble" class="status">
 <p class="author">Author: George Kontsevich</p>
-<p class="date">Created: 2018-08-20 Mon 18:55</p>
+<p class="date">Created: 2018-08-20 Mon 19:10</p>
 <p class="creator"><a href="http://www.gnu.org/software/emacs/">Emacs</a> 25.2.2 (<a href="http://orgmode.org">Org</a> mode 8.2.10)</p>
 <p class="validation"><a href="http://validator.w3.org/check?uri=referer">Validate</a></p>
 </div>

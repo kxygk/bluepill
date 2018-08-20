@@ -39,4 +39,5 @@ set_target_properties(
   PROPERTIES 
   LINK_FLAGS 
   "-T${PROJECT_SOURCE_DIR}/STM32F103RBTx_FLASH.ld \
-   -Wl,--gc-sections")
+   -Wl,--gc-sections \
+   -Wl,-Map=${PROJECT_NAME}.map")
