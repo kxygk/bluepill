@@ -232,3 +232,107 @@ More linker options are explained in details here: https://ftp.gnu.org/old-gnu/M
 *Note*:in ~STM32Cube_FW_F1_V1.6.0/Middlewares~ there are additional libraries that sorta live on top of all of this and do more complicated stuff like TCP/IP USB..stuff and Filesystem things. Basically things that are kinda complicated you probably want to avoid writing yourself. I'm completely skipping this :)
 #+END_QUOTE
 
+* Getting the code on the chip
+** Building
+
+At this point we have all the files we need to build the code, so just go to a new empty directory and run
+
+#+BEGIN_SRC
+  cmake -DCMAKE_TOOLCHAIN_FILE=path/to/source/toolchain.cmake /path/to/source/
+  make
+#+END_SRC
+
+Now in the build directory you'll have some build garbage, the link map =blinky.map= and =blinky.elf= - which is the code/executable that we want to get onto the bluepill.
+
+** OpenOCD
+#+BEGIN_QUOTE
+*Note* I had some issue with the Debian OpenOCD and I ended up using a version I built myself. The config file will look a bit different from version to version of OpenOCD
+#+END_QUOTE
+
+The standard open source software for flashing the bluepill is OpenOCD. On fancier/more-expensive boards there will be a secondary chip that helps you flash the microcontroller. But on cheaper and more practical chips this part is omitted (b/c in a sense it's a waste to have the same chip on every single board). So to flash the bluepill you will need something to do the flashing with. I'm using a knock off =ST-LINK v2= I purchased on Taobao.
+
+OpenOCD will provide us with an abstraction layer. It will communicate over JTAG or SWD or something to the chip and present us with a standard GDB server. Once it's setup we don't need to deal with the particulars of the how the chip is flashed. We simply go into GDB and tell GDB to upload new code and everything happens automatically for us behind the scenes.
+
+Ofcourse the trick is to setup OpenOCD first :)
+
+The software setup is rather baroque and not very obvious - but the [[http://openocd.org/documentation/][documentation]] is very thorough. You start from the beginning and just read very carefully sequentially and it will all make sense. Fortunately for us - the hardware we're using is very standard so we can use some already provided templates. When I install OpenOCD on my Debian system through ~apt-get install openocd~ the templates are in =/usr/share/openocd/scripts/board/=. After browsing some similar boards (like the stm32f4disovery) you kinda get the picture of how the configuration file should look
+
+#+BEGIN_SRC c :tangle openocd.cfg
+source [find interface/stlink.cfg]
+
+transport select hla_swd
+
+source [find target/stm32f1x.cfg]
+
+reset_config none
+#+END_SRC
+
+and we have this saved to a =openocd.cfg=. For convenience we should also tell CMake to copy this file over to the build directory (where we need it when running openocd)
+
+#+BEGIN_SRC cmake :tangle CMakeLists.txt
+file(COPY
+  openocd.cfg
+  DESTINATION
+  ${CMAKE_BINARY_DIR})
+#+END_SRC
+
+Now in our build directory we simply run ~openocd~ are *root* and it should launch the GDB server. It automatically will detect the ST-LINK V2 USB device in your USB port and then connect to the chip you have connected up. If something is misconfigured of not connected you can piece it together from the errors it gives back to you. Once everything is working you should have an output that looks something like
+
+#+BEGIN_SRC
+$ openocd
+Open On-Chip Debugger 0.10.0
+Licensed under GNU GPL v2
+For bug reports, read
+        http://openocd.org/doc/doxygen/bugs.html
+Info : auto-selecting first available session transport "hla_swd". To override use 'transport select <transport>'.
+Info : The selected transport took over low-level target control. The results might differ compared to plain JTAG/SWD
+adapter speed: 1000 kHz
+adapter_nsrst_delay: 100
+none separate
+srst_only separate srst_nogate srst_open_drain connect_deassert_srst
+Info : Unable to match requested speed 1000 kHz, using 950 kHz
+Info : Unable to match requested speed 1000 kHz, using 950 kHz
+Info : clock speed 950 kHz
+Info : STLINK v2 JTAG v17 API v2 SWIM v4 VID 0x0483 PID 0x3748
+Info : using stlink api v2
+Info : Target voltage: 2.911807
+Info : stm32f1x.cpu: hardware has 6 breakpoints, 4 watchpoints
+
+
+Open On-Chip Debugger 0.10.0
+Licensed under GNU GPL v2
+For bug reports, read
+        http://openocd.org/doc/doxygen/bugs.html
+WARNING: target/stm32f1x_stlink.cfg is deprecated, please switch to target/stm32f1x.cfg
+Info : auto-selecting first available session transport "hla_swd". To override use 'transport select <transport>'.
+Info : The selected transport took over low-level target control. The results might differ compared to plain JTAG/SWD
+adapter speed: 1000 kHz
+adapter_nsrst_delay: 100
+none separate
+srst_only separate srst_nogate srst_open_drain connect_deassert_srst
+Info : Unable to match requested speed 1000 kHz, using 950 kHz
+Info : Unable to match requested speed 1000 kHz, using 950 kHz
+Info : clock speed 950 kHz
+Info : STLINK v2 JTAG v17 API v2 SWIM v4 VID 0x0483 PID 0x3748
+Info : using stlink api v2
+Info : Target voltage: 2.922557
+Info : stm32f1x.cpu: hardware has 6 breakpoints, 4 watchpoints
+
+#+END_SRC
+.. and then it sorta just hangs\\
+What's actually happening is that the GDB server is running in the background and you can connect to it.
+
+** GDB
+
+To test the GDB server you now need to make sure you have the right GDB installed. On Debian for some reason there is no ~arm-none-eabi-gdb~ package on testing/buster. So you can just install the whole GCC toolchain from ARM's website (assuming you're running on a x64 machine): https://developer.arm.com/open-source/gnu-toolchain/gnu-rm/downloads
+
+Once you have it installed you need to run ~arm-none-eabi-gdb~ in our build directory and start a GDB session. The next few steps will connect to the OpenOCD server, stop the program running on it, unlock the chip, and load our new program
+
+#+BEGIN_SRC 
+> target remote localhost:3333
+> monitor reset halt
+> stm32f1x unlock
+> load blinky.elf
+#+END_SRC
+
+Then you can reset the chip and it should be running your code!

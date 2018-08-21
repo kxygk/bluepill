@@ -41,3 +41,8 @@ set_target_properties(
   "-T${PROJECT_SOURCE_DIR}/STM32F103RBTx_FLASH.ld \
    -Wl,--gc-sections \
    -Wl,-Map=${PROJECT_NAME}.map")
+
+file(COPY
+  openocd.cfg
+  DESTINATION
+  ${CMAKE_BINARY_DIR})
