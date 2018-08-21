@@ -55,7 +55,6 @@ We need to tell CMake that this file will include assembly so that it doesnt' fr
   set(STARTUP_FILE "startup_stm32f103xb.s")
 #+END_SRC
 
- 
 ** The STM Libraries
 
 Next we need actual libraries to write code with - otherwise we are kinda stuck writing assembly and poking at memory addresses with the datasheet. These are all provided in one bundle called *Cube* and it's on [[https://www.st.com/content/st_com/en/products/embedded-software/mcus-embedded-software/stm32-embedded-software/stm32cube-mcu-packages/stm32cubef1.html][the STM website]]. Here is a quick digest of what you get:
@@ -257,7 +256,7 @@ OpenOCD will provide us with an abstraction layer. It will communicate over JTAG
 
 Ofcourse the trick is to setup OpenOCD first :)
 
-The software setup is rather baroque and not very obvious - but the [[http://openocd.org/documentation/][documentation]] is very thorough. You start from the beginning and just read very carefully sequentially and it will all make sense. Fortunately for us - the hardware we're using is very standard so we can use some already provided templates. When I install OpenOCD on my Debian system through ~apt-get install openocd~ the templates are in =/usr/share/openocd/scripts/board/=. After browsing some similar boards (like the stm32f4disovery) you kinda get the picture of how the configuration file should look
+The software setup is rather baroque and not very obvious - but the [[http://openocd.org/documentation/][documentation]] is very thorough. You start from the beginning and just read very carefully sequentially and it will all make sense. Fortunately for us - the hardware we're using is very standard so we can use some already provided templates. When I install OpenOCD on my Debian system through ~apt-get install openocd~ the templates are in =/usr/share/openocd/scripts/board/=. After browsing some similar boards (like the stm32f4disovery) you kinda get the picture of how the configuration file should look (*THESE VALUES CHANGE BETWEEN POINT RELEASE OF OPENOCD. DOUBLE CHECK IF YOU HAVE ISSUE*)
 
 #+BEGIN_SRC c :tangle openocd.cfg
 source [find interface/stlink-v2.cfg]
@@ -308,7 +307,6 @@ What's actually happening is that the GDB server is running in the background an
 I also have strange power issue... it would on occassion not detect the chip or disconnect. I don't have any immediate suggestions other than turning it off and on again till it works..
 #+END_QUOTE
 
-
 ** GDB
 
 To test the GDB server you now need to make sure you have the right GDB installed. On Debian for some reason there is no ~arm-none-eabi-gdb~ package on testing/buster. So you can just install the whole GCC toolchain from ARM's website (assuming you're running on a x64 machine): https://developer.arm.com/open-source/gnu-toolchain/gnu-rm/downloads
@@ -353,4 +351,3 @@ Loading section .data, size 0x434 lma 0x8000648
 Start address 0x80003e4, load size 2684
 Transfer rate: 10 KB/sec, 447 bytes/write.
 #+END_SRC
-#+END_QUOTE

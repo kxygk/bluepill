@@ -4,7 +4,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
 <head>
 <title>Bluepill: a GCC/CMake build environment ..</title>
-<!-- 2018-08-21 Tue 22:31 -->
+<!-- 2018-08-21 Tue 22:37 -->
 <meta  http-equiv="Content-Type" content="text/html;charset=utf-8" />
 <meta  name="generator" content="Org-mode" />
 <meta  name="author" content="George Kontsevich" />
@@ -267,7 +267,6 @@ We need to tell CMake that this file will include assembly so that it doesnt' fr
 </div>
 </div>
 </div>
-
 
 <div id="outline-container-sec-2-2" class="outline-3">
 <h3 id="sec-2-2">The STM Libraries</h3>
@@ -574,7 +573,7 @@ Ofcourse the trick is to setup OpenOCD first :)
 </p>
 
 <p>
-The software setup is rather baroque and not very obvious - but the <a href="http://openocd.org/documentation/">documentation</a> is very thorough. You start from the beginning and just read very carefully sequentially and it will all make sense. Fortunately for us - the hardware we're using is very standard so we can use some already provided templates. When I install OpenOCD on my Debian system through <code>apt-get install openocd</code> the templates are in <code>/usr/share/openocd/scripts/board/</code>. After browsing some similar boards (like the stm32f4disovery) you kinda get the picture of how the configuration file should look
+The software setup is rather baroque and not very obvious - but the <a href="http://openocd.org/documentation/">documentation</a> is very thorough. You start from the beginning and just read very carefully sequentially and it will all make sense. Fortunately for us - the hardware we're using is very standard so we can use some already provided templates. When I install OpenOCD on my Debian system through <code>apt-get install openocd</code> the templates are in <code>/usr/share/openocd/scripts/board/</code>. After browsing some similar boards (like the stm32f4disovery) you kinda get the picture of how the configuration file should look (<b>THESE VALUES CHANGE BETWEEN POINT RELEASE OF OPENOCD. DOUBLE CHECK IF YOU HAVE ISSUE</b>)
 </p>
 
 <div class="org-src-container">
@@ -642,7 +641,6 @@ I also have strange power issue&#x2026; it would on occassion not detect the chi
 </div>
 </div>
 
-
 <div id="outline-container-sec-3-3" class="outline-3">
 <h3 id="sec-3-3">GDB</h3>
 <div class="outline-text-3" id="text-3-3">
@@ -703,9 +701,6 @@ Loading section .data, size 0x434 lma 0x8000648
 Start address 0x80003e4, load size 2684
 Transfer rate: 10 KB/sec, 447 bytes/write.
 </pre>
-<p>
-#+END<sub>QUOTE</sub>
-</p>
 </div>
 </div>
 </div>
@@ -713,7 +708,7 @@ Transfer rate: 10 KB/sec, 447 bytes/write.
 </div>
 <div id="postamble" class="status">
 <p class="author">Author: George Kontsevich</p>
-<p class="date">Created: 2018-08-21 Tue 22:31</p>
+<p class="date">Created: 2018-08-21 Tue 22:37</p>
 <p class="creator"><a href="http://www.gnu.org/software/emacs/">Emacs</a> 25.2.2 (<a href="http://orgmode.org">Org</a> mode 8.2.10)</p>
 <p class="validation"><a href="http://validator.w3.org/check?uri=referer">Validate</a></p>
 </div>
