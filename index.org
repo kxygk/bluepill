@@ -337,7 +337,7 @@ Once you have it installed you need to run ~arm-none-eabi-gdb~ in our build dire
 #+BEGIN_SRC 
 > target remote localhost:3333
 > monitor reset halt
-> stm32f1x unlock
+> monitor stm32f1x unlock 0
 > load blinky.elf
 #+END_SRC
 
