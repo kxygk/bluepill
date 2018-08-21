@@ -4,7 +4,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
 <head>
 <title>Bluepill: a GCC/CMake build environment ..</title>
-<!-- 2018-08-21 Tue 15:31 -->
+<!-- 2018-08-21 Tue 22:31 -->
 <meta  http-equiv="Content-Type" content="text/html;charset=utf-8" />
 <meta  name="generator" content="Org-mode" />
 <meta  name="author" content="George Kontsevich" />
@@ -161,7 +161,11 @@ for the JavaScript code in this tag.
 <ul>
 <li><a href="#sec-3-1">Building</a></li>
 <li><a href="#sec-3-2">OpenOCD</a></li>
-<li><a href="#sec-3-3">GDB</a></li>
+<li><a href="#sec-3-3">GDB</a>
+<ul>
+<li><a href="#sec-3-3-1">toolchain quirks</a></li>
+</ul>
+</li>
 </ul>
 </li>
 </ul>
@@ -551,14 +555,8 @@ Now in the build directory you'll have some build garbage, the link map <code>bl
 <div id="outline-container-sec-3-2" class="outline-3">
 <h3 id="sec-3-2">OpenOCD</h3>
 <div class="outline-text-3" id="text-3-2">
-<blockquote>
 <p>
-<b>Note</b> I had some issue with the Debian OpenOCD and I ended up using a version I built myself. The config file will look a bit different from version to version of OpenOCD
-</p>
-</blockquote>
-
-<p>
-The standard open source software for flashing the bluepill is OpenOCD. On fancier/more-expensive boards there will be a secondary chip that helps you flash the microcontroller. But on cheaper and more practical chips this part is omitted (b/c in a sense it's a waste to have the same chip on every single board). So to flash the bluepill you will need something to do the flashing with. I'm using a knock off <code>ST-LINK v2</code> I purchased on Taobao. (note the wiring is in a different order on the board and programmer
+The standard open source software for flashing the bluepill is OpenOCD. On fancier/more-expensive boards there will be a secondary chip that helps you flash the microcontroller. But on cheaper and more practical chips this part is omitted (b/c in a sense it's a waste to have the same chip on every single board). So to flash the bluepill you will need something to do the flashing with. I'm using a knock off <code>ST-LINK v2</code> I purchased on Taobao. (note the wiring is in a different order on the board and programmer)
 </p>
 
 
@@ -581,11 +579,11 @@ The software setup is rather baroque and not very obvious - but the <a href="htt
 
 <div class="org-src-container">
 
-<pre class="src src-c">source [find interface/stlink.cfg]
+<pre class="src src-c">source [find interface/stlink-v2.cfg]
 
 transport select hla_swd
 
-source [find target/stm32f1x.cfg]
+source [find target/stm32f1x_stlink.cfg]
 
 reset_config none
 </pre>
@@ -627,33 +625,23 @@ Info : STLINK v2 JTAG v17 API v2 SWIM v4 VID 0x0483 PID 0x3748
 Info : using stlink api v2
 Info : Target voltage: 2.911807
 Info : stm32f1x.cpu: hardware has 6 breakpoints, 4 watchpoints
-
-
-Open On-Chip Debugger 0.10.0
-Licensed under GNU GPL v2
-For bug reports, read
-        http://openocd.org/doc/doxygen/bugs.html
-WARNING: target/stm32f1x_stlink.cfg is deprecated, please switch to target/stm32f1x.cfg
-Info : auto-selecting first available session transport "hla_swd". To override use 'transport select &lt;transport&gt;'.
-Info : The selected transport took over low-level target control. The results might differ compared to plain JTAG/SWD
-adapter speed: 1000 kHz
-adapter_nsrst_delay: 100
-none separate
-srst_only separate srst_nogate srst_open_drain connect_deassert_srst
-Info : Unable to match requested speed 1000 kHz, using 950 kHz
-Info : Unable to match requested speed 1000 kHz, using 950 kHz
-Info : clock speed 950 kHz
-Info : STLINK v2 JTAG v17 API v2 SWIM v4 VID 0x0483 PID 0x3748
-Info : using stlink api v2
-Info : Target voltage: 2.922557
-Info : stm32f1x.cpu: hardware has 6 breakpoints, 4 watchpoints
 </pre>
 <p>
 .. and then it sorta just hangs<br  />
 What's actually happening is that the GDB server is running in the background and you can connect to it.
 </p>
+<blockquote>
+<p>
+<b>Note</b> I tried using the latest OpenOCD from the respository and it had some very weird unpredictable behavior (maybe was playing funny with my system OpenOCD). I'd look into this only if you system repository OpenOCD is older than 0.10.0 - b/c I've confirmed it works at this version
+</p>
+
+<p>
+I also have strange power issue&#x2026; it would on occassion not detect the chip or disconnect. I don't have any immediate suggestions other than turning it off and on again till it works..
+</p>
+</blockquote>
 </div>
 </div>
+
 
 <div id="outline-container-sec-3-3" class="outline-3">
 <h3 id="sec-3-3">GDB</h3>
@@ -669,7 +657,7 @@ Once you have it installed you need to run <code>arm-none-eabi-gdb</code> in our
 <pre class="example">
 &gt; target remote localhost:3333
 &gt; monitor reset halt
-&gt; stm32f1x unlock
+&gt; monitor stm32f1x unlock 0
 &gt; load blinky.elf
 </pre>
 
@@ -677,12 +665,55 @@ Once you have it installed you need to run <code>arm-none-eabi-gdb</code> in our
 Then you can reset the chip and it should be running your code!
 </p>
 </div>
+
+
+<div id="outline-container-sec-3-3-1" class="outline-4">
+<h4 id="sec-3-3-1">toolchain quirks</h4>
+<div class="outline-text-4" id="text-3-3-1">
+<p>
+<b>Note:</b> Interestingly if I have my toolchain file pointing at the precompiled GCC files from ARM, my final <code>elf</code> file ends up looking different when I flash the chip
+</p>
+
+<p>
+Using ARM's precompiled GCC <code>v.7.3.1</code> :
+</p>
+<pre class="example">
+(gdb) load blinky.elf
+Loading section .isr_vector, size 0x10c lma 0x8000000
+Loading section .text, size 0x4bc lma 0x800010c
+Loading section .rodata, size 0x4 lma 0x80005c8
+Loading section .init_array, size 0x8 lma 0x80005cc
+Loading section .fini_array, size 0x4 lma 0x80005d4
+Loading section .data, size 0x434 lma 0x80005d8
+Start address 0x800017c, load size 2572
+Transfer rate: 10 KB/sec, 428 bytes/write.
+</pre>
+
+<p>
+Using the Debian repository GCC <code>v.6.3.1</code>:
+</p>
+<pre class="example">
+(gdb) load blinky.elf
+Loading section .isr_vector, size 0x10c lma 0x8000000
+Loading section .text, size 0x52c lma 0x800010c
+Loading section .rodata, size 0x4 lma 0x8000638
+Loading section .init_array, size 0x8 lma 0x800063c
+Loading section .fini_array, size 0x4 lma 0x8000644
+Loading section .data, size 0x434 lma 0x8000648
+Start address 0x80003e4, load size 2684
+Transfer rate: 10 KB/sec, 447 bytes/write.
+</pre>
+<p>
+#+END<sub>QUOTE</sub>
+</p>
+</div>
+</div>
 </div>
 </div>
 </div>
 <div id="postamble" class="status">
 <p class="author">Author: George Kontsevich</p>
-<p class="date">Created: 2018-08-21 Tue 15:31</p>
+<p class="date">Created: 2018-08-21 Tue 22:31</p>
 <p class="creator"><a href="http://www.gnu.org/software/emacs/">Emacs</a> 25.2.2 (<a href="http://orgmode.org">Org</a> mode 8.2.10)</p>
 <p class="validation"><a href="http://validator.w3.org/check?uri=referer">Validate</a></p>
 </div>
