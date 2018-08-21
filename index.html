@@ -4,7 +4,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
 <head>
 <title>Bluepill: a GCC/CMake build environment ..</title>
-<!-- 2018-08-21 Tue 14:49 -->
+<!-- 2018-08-21 Tue 15:31 -->
 <meta  http-equiv="Content-Type" content="text/html;charset=utf-8" />
 <meta  name="generator" content="Org-mode" />
 <meta  name="author" content="George Kontsevich" />
@@ -171,7 +171,17 @@ for the JavaScript code in this tag.
 <h2 id="sec-1">Intro</h2>
 <div class="outline-text-2" id="text-1">
 <p>
-In this guide we will setup a simple minimal blinky for the Bluepill. I will have two versions - one using the CMSIS and one using the LL (explained below). The embedded community seems a bit allergic to CMake - but I'm quite allergic to Make, so hopefully this guide will provide something new.
+In this guide we will setup a simple minimal blinky for the Bluepill: A very cheap board available from China with the <code>STM32F103C8T6</code> chip on it. They cost a smidge over one dollar each
+</p>
+
+
+<div class="figure">
+<p><img src="bluepill.jpeg" alt="bluepill.jpeg" />
+</p>
+</div>
+
+<p>
+I will have two versions - one using the CMSIS and one using the LL (explained below). The embedded community seems a bit allergic to CMake - but I'm quite allergic to Make, so hopefully this guide will provide something new.
 </p>
 
 <p>
@@ -548,8 +558,14 @@ Now in the build directory you'll have some build garbage, the link map <code>bl
 </blockquote>
 
 <p>
-The standard open source software for flashing the bluepill is OpenOCD. On fancier/more-expensive boards there will be a secondary chip that helps you flash the microcontroller. But on cheaper and more practical chips this part is omitted (b/c in a sense it's a waste to have the same chip on every single board). So to flash the bluepill you will need something to do the flashing with. I'm using a knock off <code>ST-LINK v2</code> I purchased on Taobao.
+The standard open source software for flashing the bluepill is OpenOCD. On fancier/more-expensive boards there will be a secondary chip that helps you flash the microcontroller. But on cheaper and more practical chips this part is omitted (b/c in a sense it's a waste to have the same chip on every single board). So to flash the bluepill you will need something to do the flashing with. I'm using a knock off <code>ST-LINK v2</code> I purchased on Taobao. (note the wiring is in a different order on the board and programmer
 </p>
+
+
+<div class="figure">
+<p><img src="st-link.jpeg" alt="st-link.jpeg" />
+</p>
+</div>
 
 <p>
 OpenOCD will provide us with an abstraction layer. It will communicate over JTAG or SWD or something to the chip and present us with a standard GDB server. Once it's setup we don't need to deal with the particulars of the how the chip is flashed. We simply go into GDB and tell GDB to upload new code and everything happens automatically for us behind the scenes.
@@ -666,7 +682,7 @@ Then you can reset the chip and it should be running your code!
 </div>
 <div id="postamble" class="status">
 <p class="author">Author: George Kontsevich</p>
-<p class="date">Created: 2018-08-21 Tue 14:49</p>
+<p class="date">Created: 2018-08-21 Tue 15:31</p>
 <p class="creator"><a href="http://www.gnu.org/software/emacs/">Emacs</a> 25.2.2 (<a href="http://orgmode.org">Org</a> mode 8.2.10)</p>
 <p class="validation"><a href="http://validator.w3.org/check?uri=referer">Validate</a></p>
 </div>
