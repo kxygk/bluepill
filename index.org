@@ -34,7 +34,7 @@ When an application normally runs on a desktop machine it's generally running us
 
 On a simple microcontroller there is no operating system to manage the memory, and the memory is shared with other functionality - some addresses are reserved for peripherals, other addresses are for interrupts and reset bits, the stack and heap are allocated some device-specific place and there is also a split between ROM and RAM. 
 
-So because we can't just start at address zero and run foward or drop in a ~main()~ randomly and start there, we need to tell the linker what the code layout is though a custom *linker script*
+Because of these new limitations we can't just start executing code at address zero  or drop in a ~main()~ functions somewhere randomly and start there, we need to tell the linker what the code layout is though a custom *linker script*. First we tell it which parts are ROM and RAM with their respective sizes. ROM (Read Only Memory) is where the code and constants live, and RAM (Random Access Memory) is where the stack and heap live - the stuff that's dynamic
 
 #+BEGIN_SRC c :tangle STM32F103RBTx_FLASH.ld
 MEMORY
@@ -44,23 +44,23 @@ MEMORY
 }
 #+END_SRC
 
-Even give that, code on a microcontroller doesn't start at the first address of ROM and go from there (though you can make it kinda work that way). The way it works is that certain external factors generate interrupt signals and the chip responds by running code and then returning to whatever it was doing before. These factors can be a clock running out, a peripheral wanting attention, an attached debugger wanting a halt, etc.
+Even give that, code on a microcontroller doesn't by default start at the first address of ROM and go from there (that's more or less how we conceptualize code running on an normal OS). A better way to think about the microcontroller is it's as a machine that recieves interrupt signals from external inputs and the chip responding by running code and then returning to whatever it was doing before. These interrupting inputs can be a clock running out, a peripheral wanting attention, an attached debugger wanting a halt, etc.
 
 So instead of a ~main()~ or something, the first thing in ROM is a vector table - a table of pointers to the different *interrupt handlers* - ie. the code that is run when each interrupt happens. So we need to tell the linker that there will be a vector table
 #+BEGIN_SRC c :tangle STM32F103RBTx_FLASH.ld
 EXTERN(vector_table);
 #+END_SRC
-~vector_table~ is just not a special keyword, it's just a label we are giving the linker. It's written as =EXTERN=, meaning it'll look for its definition in our code, so we need to not forget to define this later on!
+Here ~vector_table~ is  not a special keyword, it's just a label we are giving to the linker. It's written as =EXTERN=, meaning it has the label name now, but it'll look for its definition in our code, so we need to not forget to define this later on!
 
-The first interrupt in the table is special and it's the one that is generated when the system is powered on, the user presses the reset button, or the code runs out of things to do. The code that it triggers is appropriately called the *reset handeler*
+The first interrupt handler in this table will be special and it's the one that is triggered when the system is powered on, the user presses the reset button, or the code runs out of things to do. It's appropriately called the *reset handeler*
 
-That the code should start at the *reset handler*
+We also tell the linker that the code should start at the *reset handler*. Though as we'll see in the next section, this isn't stictly necessary because the reset handler is always the first interrupt handler in the vector table - so the microcontroller will know where to look for it by default.
 #+BEGIN_SRC c :tangle STM32F103RBTx_FLASH.ld
 ENTRY(reset_handler);
 #+END_SRC
 Again, this is just a symbol and the linker will look for its value in our code during linking.
 
-Lastly we just need to tell the linker that we want those vectors first in the ROM and aligned at the byte level (b/c the micro reads things in byte sized chucks - haha)
+Lastly we need to tell the linker that we want those vectors first in the ROM and aligned at the byte level (b/c the micro reads things in byte sized chucks - haha)
 #+BEGIN_SRC c :tangle STM32F103RBTx_FLASH.ld
 SECTIONS
 {
@@ -71,13 +71,58 @@ SECTIONS
     } >rom
 }
 #+END_SRC
+So the chip doesn't need to hunt for the vector table. It's always in the same spot - and the reset handler is as well.
 
 ** The Startup File (WIP)
 
-TODO: Copied from elsewhere... startup needs to be pulled out of =satoshinm='s main.c
+The next part is to actually write the reset handler and to define the vector tables we just talked about and that the linker is expecting from us! The vector table will be set to some default values (and can be changed later) and we'll write the reset handler in a generic way that we can reuse between project. It will do some generic initializations and then at the end call to ~main()~. Then when we start a new project we can simply start writing a ~main()~ and skip all this initializations. In so doing we've split off these initializations into a separate *startup file* that we will reuse across projects.
 
-B/c this process is independent of the rest of the program itself it's canonically separating it out into a "startup file". This is generally written in assembly and reused between projects. I have absolutely no clue how to write one from scratch. STM provides several different versions in their templates - all called =startup_stm32f103xb.s= and at the top of these files it explains the general purpose:
+#+BEGIN_QUOTE
+*Note:* There is nothing special about this file for the compiler or linker - it's just another code file - and  you are free to copy it over to your other code files if you want!
+#+END_QUOTE
+#+BEGIN_SRC c :tangle startup_stm32f103xb.c
+  void main(void);
+  void __attribute__ ((weak, naked)) reset_handler(void) {
+      (*(volatile unsigned int *)(0x40021018)) |= (1 << 4);
 
+      (*(volatile unsigned int *)(0x40011004)) |= (0x00 << (((13 - 8) * 4) + 2));
+      (*(volatile unsigned int *)(0x40011004)) |= (0x02 << ((13 - 8) * 4));
+      main();
+  }
+
+
+
+  __attribute__ ((section(".vectors")))
+  struct {
+      unsigned int *initial_sp_value;
+      void (*reset)(void);
+      void (*nmi)(void);
+      void (*hard_fault)(void);
+      void (*memory_manage_fault)(void);
+      void (*bus_fault)(void);
+      void (*usage_fault)(void);
+      void (*reserved_x001c[4])(void);
+      void (*sv_call)(void);
+      void (*debug_monitor)(void);
+      void (*reserved_x0034)(void);
+      void (*pend_sv)(void);
+      void (*systick)(void);
+      void (*irq[68])(void);
+  } vector_table = {
+      .reset = reset_handler,
+  };
+#+END_SRC
+If you open up some startup files in templates provided by STM you will see that they're all written in assembly. The rational is that because the resulting code is always the same there no chance of the compiler doing something funny. However if you squint and look at the assembly you will see that the code is doing basically the same thing. It defined a reset handler which then calls a main.
+
+Once we have the file we can add it to CMake
+#+BEGIN_SRC cmake :tangle CMakeLists.txt
+  enable_language(ASM)
+  set(STARTUP_FILE "startup_stm32f103xb.c")
+#+END_SRC
+#+BEGIN_QUOTE
+*TODO* Explain what's going on in more details
+*TODO* Maybe split all of this generic stuff into a separate repository that can be pulled in with CMake. If I write a ~configure_elf()~ cmake function that will do all this messy stuff, it'd keep the parent project =CMakeLists.txt= a lot cleaner. 
+#+END_QUOTE
 #+BEGIN_QUOTE
   *            This module performs:
   *                - Set the initial SP
@@ -86,18 +131,7 @@ B/c this process is independent of the rest of the program itself it's canonical
   *                - Configure the clock system   
   *                - Branches to main in the C library (which eventually
   *                  calls main()).
-
 #+END_QUOTE
-
-Unfortunately each startup file looks nothing like any other and I have very little way to judge which one I need - so it's a bit of guessing game and hoping it'll work. I've copied one over that seems to work for me for the moment. If this becomes an issue then I might need to revisit it.
-
-We need to tell CMake that this file will include assembly so that it doesnt' freak out
-
-#+BEGIN_SRC cmake :tangle CMakeLists.txt
-  enable_language(ASM)
-  set(STARTUP_FILE "startup_stm32f103xb.s")
-#+END_SRC
-
 ** The STM Libraries
 
 Next we need actual libraries to write code with - otherwise we are kinda stuck writing assembly and poking at memory addresses with the datasheet. These are all provided in one bundle called *Cube* and it's on [[https://www.st.com/content/st_com/en/products/embedded-software/mcus-embedded-software/stm32-embedded-software/stm32cube-mcu-packages/stm32cubef1.html][the STM website]]. Here is a quick digest of what you get:
@@ -130,42 +164,16 @@ TODO: Write my own :)
 Ripped directly from https://github.com/satoshinm/pill_blink/blob/master/bare-metal/pill_blink.c for now...
 
 #+BEGIN_SRC c :tangle src/main.c
-void __attribute__ ((weak, naked)) reset_handler(void) {
-    (*(volatile unsigned int *)(0x40021018)) |= (1 << 4);
+  int main(void){
+      while(1) {
+          (*(volatile unsigned int *)(0x40011010)) = (1 << 13);
+          for (int i = 0; i < 1000000; ++i) __asm__("nop");
 
-    (*(volatile unsigned int *)(0x40011004)) |= (0x00 << (((13 - 8) * 4) + 2));
-    (*(volatile unsigned int *)(0x40011004)) |= (0x02 << ((13 - 8) * 4));
-
-    while(1) {
-        (*(volatile unsigned int *)(0x40011010)) = (1 << 13);
-        for (int i = 0; i < 1000000; ++i) __asm__("nop");
-
-        (*(volatile unsigned short *)(0x40011014)) = (1 << 13);
-        for (int i = 0; i < 500000; ++i) __asm__("nop");
-    }
-}
-
-__attribute__ ((section(".vectors")))
-struct {
-    unsigned int *initial_sp_value;
-    void (*reset)(void);
-    void (*nmi)(void);
-    void (*hard_fault)(void);
-    void (*memory_manage_fault)(void);
-    void (*bus_fault)(void);
-    void (*usage_fault)(void);
-    void (*reserved_x001c[4])(void);
-    void (*sv_call)(void);
-    void (*debug_monitor)(void);
-    void (*reserved_x0034)(void);
-    void (*pend_sv)(void);
-    void (*systick)(void);
-    void (*irq[68])(void);
-} vector_table = {
-    .reset = reset_handler,
-};
+          (*(volatile unsigned short *)(0x40011014)) = (1 << 13);
+          for (int i = 0; i < 500000; ++i) __asm__("nop");
+      }
+  }
 #+END_SRC
-
 Once there we can just add it as a special executable into our cmake
 #+BEGIN_SRC cmake :tangle CMakeLists.txt
   add_executable(${PROJECT_NAME}.elf ${STARTUP_FILE}

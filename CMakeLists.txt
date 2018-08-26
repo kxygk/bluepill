@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.0)
 project(blinky)
 
 enable_language(ASM)
-set(STARTUP_FILE "startup_stm32f103xb.s")
+set(STARTUP_FILE "startup_stm32f103xb.c")
 
 add_subdirectory(stm32f1-ll)
 

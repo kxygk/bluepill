@@ -4,7 +4,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
 <head>
 <title>Bluepill: a GCC/CMake build environment ..</title>
-<!-- 2018-08-26 Sun 20:58 -->
+<!-- 2018-08-26 Sun 22:15 -->
 <meta  http-equiv="Content-Type" content="text/html;charset=utf-8" />
 <meta  name="generator" content="Org-mode" />
 <meta  name="author" content="George Kontsevich" />
@@ -233,7 +233,7 @@ On a simple microcontroller there is no operating system to manage the memory, a
 </p>
 
 <p>
-So because we can't just start at address zero and run foward or drop in a <code>main()</code> randomly and start there, we need to tell the linker what the code layout is though a custom <b>linker script</b>
+Because of these new limitations we can't just start executing code at address zero  or drop in a <code>main()</code> functions somewhere randomly and start there, we need to tell the linker what the code layout is though a custom <b>linker script</b>. First we tell it which parts are ROM and RAM with their respective sizes. ROM (Read Only Memory) is where the code and constants live, and RAM (Random Access Memory) is where the stack and heap live - the stuff that's dynamic
 </p>
 
 <div class="org-src-container">
@@ -247,7 +247,7 @@ So because we can't just start at address zero and run foward or drop in a <code
 </div>
 
 <p>
-Even give that, code on a microcontroller doesn't start at the first address of ROM and go from there (though you can make it kinda work that way). The way it works is that certain external factors generate interrupt signals and the chip responds by running code and then returning to whatever it was doing before. These factors can be a clock running out, a peripheral wanting attention, an attached debugger wanting a halt, etc.
+Even give that, code on a microcontroller doesn't by default start at the first address of ROM and go from there (that's more or less how we conceptualize code running on an normal OS). A better way to think about the microcontroller is it's as a machine that recieves interrupt signals from external inputs and the chip responding by running code and then returning to whatever it was doing before. These interrupting inputs can be a clock running out, a peripheral wanting attention, an attached debugger wanting a halt, etc.
 </p>
 
 <p>
@@ -259,15 +259,15 @@ So instead of a <code>main()</code> or something, the first thing in ROM is a ve
 </pre>
 </div>
 <p>
-<code>vector_table</code> is just not a special keyword, it's just a label we are giving the linker. It's written as <code>EXTERN</code>, meaning it'll look for its definition in our code, so we need to not forget to define this later on!
+Here <code>vector_table</code> is  not a special keyword, it's just a label we are giving to the linker. It's written as <code>EXTERN</code>, meaning it has the label name now, but it'll look for its definition in our code, so we need to not forget to define this later on!
 </p>
 
 <p>
-The first interrupt in the table is special and it's the one that is generated when the system is powered on, the user presses the reset button, or the code runs out of things to do. The code that it triggers is appropriately called the <b>reset handeler</b>
+The first interrupt handler in this table will be special and it's the one that is triggered when the system is powered on, the user presses the reset button, or the code runs out of things to do. It's appropriately called the <b>reset handeler</b>
 </p>
 
 <p>
-That the code should start at the <b>reset handler</b>
+We also tell the linker that the code should start at the <b>reset handler</b>. Though as we'll see in the next section, this isn't stictly necessary because the reset handler is always the first interrupt handler in the vector table - so the microcontroller will know where to look for it by default.
 </p>
 <div class="org-src-container">
 
@@ -279,7 +279,7 @@ Again, this is just a symbol and the linker will look for its value in our code 
 </p>
 
 <p>
-Lastly we just need to tell the linker that we want those vectors first in the ROM and aligned at the byte level (b/c the micro reads things in byte sized chucks - haha)
+Lastly we need to tell the linker that we want those vectors first in the ROM and aligned at the byte level (b/c the micro reads things in byte sized chucks - haha)
 </p>
 <div class="org-src-container">
 
@@ -293,6 +293,9 @@ Lastly we just need to tell the linker that we want those vectors first in the R
 }
 </pre>
 </div>
+<p>
+So the chip doesn't need to hunt for the vector table. It's always in the same spot - and the reset handler is as well.
+</p>
 </div>
 </div>
 
@@ -300,13 +303,67 @@ Lastly we just need to tell the linker that we want those vectors first in the R
 <h3 id="sec-2-2">The Startup File (WIP)</h3>
 <div class="outline-text-3" id="text-2-2">
 <p>
-TODO: Copied from elsewhere&#x2026; startup needs to be pulled out of <code>satoshinm</code>'s main.c
+The next part is to actually write the reset handler and to define the vector tables we just talked about and that the linker is expecting from us! The vector table will be set to some default values (and can be changed later) and we'll write the reset handler in a generic way that we can reuse between project. It will do some generic initializations and then at the end call to <code>main()</code>. Then when we start a new project we can simply start writing a <code>main()</code> and skip all this initializations. In so doing we've split off these initializations into a separate <b>startup file</b> that we will reuse across projects.
+</p>
+
+<blockquote>
+<p>
+<b>Note:</b> There is nothing special about this file for the compiler or linker - it's just another code file - and  you are free to copy it over to your other code files if you want!
+</p>
+</blockquote>
+<div class="org-src-container">
+
+<pre class="src src-c"><span style="color: #18b2b2;">void</span> <span style="color: #ef2929;">main</span>(<span style="color: #18b2b2;">void</span>);
+<span style="color: #18b2b2;">void</span> <span style="color: #00af00;">__attribute__</span> ((weak, naked)) <span style="color: #ef2929;">reset_handler</span>(<span style="color: #18b2b2;">void</span>) {
+    (*(<span style="color: #00af00;">volatile</span> <span style="color: #18b2b2;">unsigned</span> <span style="color: #18b2b2;">int</span> *)(0x40021018)) |= (1 &lt;&lt; 4);
+
+    (*(<span style="color: #00af00;">volatile</span> <span style="color: #18b2b2;">unsigned</span> <span style="color: #18b2b2;">int</span> *)(0x40011004)) |= (0x00 &lt;&lt; (((13 - 8) * 4) + 2));
+    (*(<span style="color: #00af00;">volatile</span> <span style="color: #18b2b2;">unsigned</span> <span style="color: #18b2b2;">int</span> *)(0x40011004)) |= (0x02 &lt;&lt; ((13 - 8) * 4));
+    main();
+}
+
+
+
+<span style="color: #00af00;">__attribute__</span> ((section(<span style="color: #ff1f8b;">".vectors"</span>)))
+<span style="color: #00af00;">struct</span> {
+    <span style="color: #18b2b2;">unsigned</span> <span style="color: #18b2b2;">int</span> *<span style="color: #ff8700;">initial_sp_value</span>;
+    <span style="color: #18b2b2;">void</span> (*<span style="color: #ef2929;">reset</span>)(<span style="color: #18b2b2;">void</span>);
+    <span style="color: #18b2b2;">void</span> (*<span style="color: #ef2929;">nmi</span>)(<span style="color: #18b2b2;">void</span>);
+    <span style="color: #18b2b2;">void</span> (*<span style="color: #ef2929;">hard_fault</span>)(<span style="color: #18b2b2;">void</span>);
+    <span style="color: #18b2b2;">void</span> (*<span style="color: #ef2929;">memory_manage_fault</span>)(<span style="color: #18b2b2;">void</span>);
+    <span style="color: #18b2b2;">void</span> (*<span style="color: #ef2929;">bus_fault</span>)(<span style="color: #18b2b2;">void</span>);
+    <span style="color: #18b2b2;">void</span> (*<span style="color: #ef2929;">usage_fault</span>)(<span style="color: #18b2b2;">void</span>);
+    <span style="color: #18b2b2;">void</span> (*<span style="color: #ef2929;">reserved_x001c</span>[4])(<span style="color: #18b2b2;">void</span>);
+    <span style="color: #18b2b2;">void</span> (*<span style="color: #ef2929;">sv_call</span>)(<span style="color: #18b2b2;">void</span>);
+    <span style="color: #18b2b2;">void</span> (*<span style="color: #ef2929;">debug_monitor</span>)(<span style="color: #18b2b2;">void</span>);
+    <span style="color: #18b2b2;">void</span> (*<span style="color: #ef2929;">reserved_x0034</span>)(<span style="color: #18b2b2;">void</span>);
+    <span style="color: #18b2b2;">void</span> (*<span style="color: #ef2929;">pend_sv</span>)(<span style="color: #18b2b2;">void</span>);
+    <span style="color: #18b2b2;">void</span> (*<span style="color: #ef2929;">systick</span>)(<span style="color: #18b2b2;">void</span>);
+    <span style="color: #18b2b2;">void</span> (*<span style="color: #ef2929;">irq</span>[68])(<span style="color: #18b2b2;">void</span>);
+} <span style="color: #ff8700;">vector_table</span> = {
+    .reset = reset_handler,
+};
+</pre>
+</div>
+<p>
+If you open up some startup files in templates provided by STM you will see that they're all written in assembly. The rational is that because the resulting code is always the same there no chance of the compiler doing something funny. However if you squint and look at the assembly you will see that the code is doing basically the same thing. It defined a reset handler which then calls a main.
 </p>
 
 <p>
-B/c this process is independent of the rest of the program itself it's canonically separating it out into a "startup file". This is generally written in assembly and reused between projects. I have absolutely no clue how to write one from scratch. STM provides several different versions in their templates - all called <code>startup_stm32f103xb.s</code> and at the top of these files it explains the general purpose:
+Once we have the file we can add it to CMake
 </p>
+<div class="org-src-container">
 
+<pre class="src src-cmake"><span style="color: #ef2929;">enable_language</span>(ASM)
+<span style="color: #ef2929;">set</span>(STARTUP_FILE <span style="color: #ff1f8b;">"startup_stm32f103xb.c"</span>)
+</pre>
+</div>
+<blockquote>
+<p>
+<b>TODO</b> Explain what's going on in more details
+<b>TODO</b> Maybe split all of this generic stuff into a separate repository that can be pulled in with CMake. If I write a <code>configure_elf()</code> cmake function that will do all this messy stuff, it'd keep the parent project <code>CMakeLists.txt</code> a lot cleaner. 
+</p>
+</blockquote>
 <blockquote>
 <ul class="org-ul">
 <li>This module performs:
@@ -325,24 +382,8 @@ B/c this process is independent of the rest of the program itself it's canonical
 </li>
 </ul>
 </blockquote>
-
-<p>
-Unfortunately each startup file looks nothing like any other and I have very little way to judge which one I need - so it's a bit of guessing game and hoping it'll work. I've copied one over that seems to work for me for the moment. If this becomes an issue then I might need to revisit it.
-</p>
-
-<p>
-We need to tell CMake that this file will include assembly so that it doesnt' freak out
-</p>
-
-<div class="org-src-container">
-
-<pre class="src src-cmake"><span style="color: #ef2929;">enable_language</span>(ASM)
-<span style="color: #ef2929;">set</span>(STARTUP_FILE <span style="color: #ff1f8b;">"startup_stm32f103xb.s"</span>)
-</pre>
 </div>
 </div>
-</div>
-
 <div id="outline-container-sec-2-3" class="outline-3">
 <h3 id="sec-2-3">The STM Libraries</h3>
 <div class="outline-text-3" id="text-2-3">
@@ -400,12 +441,7 @@ Ripped directly from <a href="https://github.com/satoshinm/pill_blink/blob/maste
 
 <div class="org-src-container">
 
-<pre class="src src-c"><span style="color: #18b2b2;">void</span> <span style="color: #00af00;">__attribute__</span> ((weak, naked)) <span style="color: #ef2929;">reset_handler</span>(<span style="color: #18b2b2;">void</span>) {
-    (*(<span style="color: #00af00;">volatile</span> <span style="color: #18b2b2;">unsigned</span> <span style="color: #18b2b2;">int</span> *)(0x40021018)) |= (1 &lt;&lt; 4);
-
-    (*(<span style="color: #00af00;">volatile</span> <span style="color: #18b2b2;">unsigned</span> <span style="color: #18b2b2;">int</span> *)(0x40011004)) |= (0x00 &lt;&lt; (((13 - 8) * 4) + 2));
-    (*(<span style="color: #00af00;">volatile</span> <span style="color: #18b2b2;">unsigned</span> <span style="color: #18b2b2;">int</span> *)(0x40011004)) |= (0x02 &lt;&lt; ((13 - 8) * 4));
-
+<pre class="src src-c"><span style="color: #18b2b2;">int</span> <span style="color: #ef2929;">main</span>(<span style="color: #18b2b2;">void</span>){
     <span style="color: #00af00;">while</span>(1) {
         (*(<span style="color: #00af00;">volatile</span> <span style="color: #18b2b2;">unsigned</span> <span style="color: #18b2b2;">int</span> *)(0x40011010)) = (1 &lt;&lt; 13);
         <span style="color: #00af00;">for</span> (<span style="color: #18b2b2;">int</span> <span style="color: #ff8700;">i</span> = 0; i &lt; 1000000; ++i) <span style="color: #00af00;">__asm__</span>(<span style="color: #ff1f8b;">"nop"</span>);
@@ -414,29 +450,8 @@ Ripped directly from <a href="https://github.com/satoshinm/pill_blink/blob/maste
         <span style="color: #00af00;">for</span> (<span style="color: #18b2b2;">int</span> <span style="color: #ff8700;">i</span> = 0; i &lt; 500000; ++i) <span style="color: #00af00;">__asm__</span>(<span style="color: #ff1f8b;">"nop"</span>);
     }
 }
-
-<span style="color: #00af00;">__attribute__</span> ((section(<span style="color: #ff1f8b;">".vectors"</span>)))
-<span style="color: #00af00;">struct</span> {
-    <span style="color: #18b2b2;">unsigned</span> <span style="color: #18b2b2;">int</span> *<span style="color: #ff8700;">initial_sp_value</span>;
-    <span style="color: #18b2b2;">void</span> (*<span style="color: #ef2929;">reset</span>)(<span style="color: #18b2b2;">void</span>);
-    <span style="color: #18b2b2;">void</span> (*<span style="color: #ef2929;">nmi</span>)(<span style="color: #18b2b2;">void</span>);
-    <span style="color: #18b2b2;">void</span> (*<span style="color: #ef2929;">hard_fault</span>)(<span style="color: #18b2b2;">void</span>);
-    <span style="color: #18b2b2;">void</span> (*<span style="color: #ef2929;">memory_manage_fault</span>)(<span style="color: #18b2b2;">void</span>);
-    <span style="color: #18b2b2;">void</span> (*<span style="color: #ef2929;">bus_fault</span>)(<span style="color: #18b2b2;">void</span>);
-    <span style="color: #18b2b2;">void</span> (*<span style="color: #ef2929;">usage_fault</span>)(<span style="color: #18b2b2;">void</span>);
-    <span style="color: #18b2b2;">void</span> (*<span style="color: #ef2929;">reserved_x001c</span>[4])(<span style="color: #18b2b2;">void</span>);
-    <span style="color: #18b2b2;">void</span> (*<span style="color: #ef2929;">sv_call</span>)(<span style="color: #18b2b2;">void</span>);
-    <span style="color: #18b2b2;">void</span> (*<span style="color: #ef2929;">debug_monitor</span>)(<span style="color: #18b2b2;">void</span>);
-    <span style="color: #18b2b2;">void</span> (*<span style="color: #ef2929;">reserved_x0034</span>)(<span style="color: #18b2b2;">void</span>);
-    <span style="color: #18b2b2;">void</span> (*<span style="color: #ef2929;">pend_sv</span>)(<span style="color: #18b2b2;">void</span>);
-    <span style="color: #18b2b2;">void</span> (*<span style="color: #ef2929;">systick</span>)(<span style="color: #18b2b2;">void</span>);
-    <span style="color: #18b2b2;">void</span> (*<span style="color: #ef2929;">irq</span>[68])(<span style="color: #18b2b2;">void</span>);
-} <span style="color: #ff8700;">vector_table</span> = {
-    .reset = reset_handler,
-};
 </pre>
 </div>
-
 <p>
 Once there we can just add it as a special executable into our cmake
 </p>
@@ -752,7 +767,7 @@ Transfer rate: 10 KB/sec, 447 bytes/write.
 </div>
 <div id="postamble" class="status">
 <p class="author">Author: George Kontsevich</p>
-<p class="date">Created: 2018-08-26 Sun 20:58</p>
+<p class="date">Created: 2018-08-26 Sun 22:15</p>
 <p class="creator"><a href="http://www.gnu.org/software/emacs/">Emacs</a> 25.2.2 (<a href="http://orgmode.org">Org</a> mode 8.2.10)</p>
 <p class="validation"><a href="http://validator.w3.org/check?uri=referer">Validate</a></p>
 </div>
