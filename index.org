@@ -29,9 +29,52 @@ The blessed way of building things for the STM32 series chips is using their wiz
 - =PurpleAlien= has another setup - which is very close to what I'm doing. He described it [[https://www.purplealienplanet.com/node/69][on his website]] and the code is on the [[https://github.com/PurpleAlien/stm32-minimal][his github]]. It's a slightly different chip - but the steps should work almost identically for the =bluepill=.
 
 * Anatomy of a build
+** The Linker Script
+When an application normally runs on a desktop machine it's generally running using virtual memory in a virtual application-specific address space. From the applications point of view it can manipulate it's own memory however it wants - and it's the operating system that then translates that into safe operations on the actually memory (for instance to insure that the applications doesn't touch any memory region it shouldn't)
 
-** The Startup File
-This first catch with programming the microcontroller is that the system can't simply start at the top of ~main()~ and work through the code like on a normal machine. When the chip is powered off the program is stored permanently in the Flash memory (ROM) and because there is no operating system to loading the program into RAM we need to do that ourselves in addition to initializing system clocks and event handlers.
+On a simple microcontroller there is no operating system to manage the memory, and the memory is shared with other functionality - some addresses are reserved for peripherals, other addresses are for interrupts and reset bits, the stack and heap are allocated some device-specific place and there is also a split between ROM and RAM. 
+
+So because we can't just start at address zero and run foward or drop in a ~main()~ randomly and start there, we need to tell the linker what the code layout is though a custom *linker script*
+
+#+BEGIN_SRC c :tangle STM32F103RBTx_FLASH.ld
+MEMORY
+{
+    rom (rx) : ORIGIN = 0x08000000, LENGTH = 128K
+    ram (rwx) : ORIGIN = 0x20000000, LENGTH = 20K
+}
+#+END_SRC
+
+Even give that, code on a microcontroller doesn't start at the first address of ROM and go from there (though you can make it kinda work that way). The way it works is that certain external factors generate interrupt signals and the chip responds by running code and then returning to whatever it was doing before. These factors can be a clock running out, a peripheral wanting attention, an attached debugger wanting a halt, etc.
+
+So instead of a ~main()~ or something, the first thing in ROM is a vector table - a table of pointers to the different *interrupt handlers* - ie. the code that is run when each interrupt happens. So we need to tell the linker that there will be a vector table
+#+BEGIN_SRC c :tangle STM32F103RBTx_FLASH.ld
+EXTERN(vector_table);
+#+END_SRC
+~vector_table~ is just not a special keyword, it's just a label we are giving the linker. It's written as =EXTERN=, meaning it'll look for its definition in our code, so we need to not forget to define this later on!
+
+The first interrupt in the table is special and it's the one that is generated when the system is powered on, the user presses the reset button, or the code runs out of things to do. The code that it triggers is appropriately called the *reset handeler*
+
+That the code should start at the *reset handler*
+#+BEGIN_SRC c :tangle STM32F103RBTx_FLASH.ld
+ENTRY(reset_handler);
+#+END_SRC
+Again, this is just a symbol and the linker will look for its value in our code during linking.
+
+Lastly we just need to tell the linker that we want those vectors first in the ROM and aligned at the byte level (b/c the micro reads things in byte sized chucks - haha)
+#+BEGIN_SRC c :tangle STM32F103RBTx_FLASH.ld
+SECTIONS
+{
+    .text : {
+        *(.vectors)
+        *(.text*)
+        . = ALIGN(4);
+    } >rom
+}
+#+END_SRC
+
+** The Startup File (WIP)
+
+TODO: Copied from elsewhere... startup needs to be pulled out of =satoshinm='s main.c
 
 B/c this process is independent of the rest of the program itself it's canonically separating it out into a "startup file". This is generally written in assembly and reused between projects. I have absolutely no clue how to write one from scratch. STM provides several different versions in their templates - all called =startup_stm32f103xb.s= and at the top of these files it explains the general purpose:
 
@@ -75,72 +118,58 @@ The library bundle has been added as a submodule to this project, but if you for
 add_subdirectory(stm32f1-ll)
 #+END_SRC
 
+#+BEGIN_QUOTE
+*Note*:in ~STM32Cube_FW_F1_V1.6.0/Middlewares~ there are additional libraries that sorta live on top of all of this and do more complicated stuff like TCP/IP USB..stuff and Filesystem things. Basically things that are kinda complicated you probably want to avoid writing yourself. I'm completely skipping this :)
+#+END_QUOTE
+  
 ** Our blinky code (WIP)
 
 Next we can write a little program to blink a light and put it into =/src/main.c=
 
-#+BEGIN_SRC c
-#include <stdlib.h>
+TODO: Write my own :)
+Ripped directly from https://github.com/satoshinm/pill_blink/blob/master/bare-metal/pill_blink.c for now...
 
-#include "stm32f1xx.h"
+#+BEGIN_SRC c :tangle src/main.c
+void __attribute__ ((weak, naked)) reset_handler(void) {
+    (*(volatile unsigned int *)(0x40021018)) |= (1 << 4);
 
-#include "stm32f1xx_ll_gpio.h"
-#include "stm32f1xx_ll_utils.h"
-#include "stm32f1xx_ll_rcc.h"
-//#include "stm32f1xx_conf.h"
+    (*(volatile unsigned int *)(0x40011004)) |= (0x00 << (((13 - 8) * 4) + 2));
+    (*(volatile unsigned int *)(0x40011004)) |= (0x02 << ((13 - 8) * 4));
 
-void SystemClock_Config(void){
+    while(1) {
+        (*(volatile unsigned int *)(0x40011010)) = (1 << 13);
+        for (int i = 0; i < 1000000; ++i) __asm__("nop");
 
-    /* Clock init stuff */ 
-    
-    LL_UTILS_PLLInitTypeDef sUTILS_PLLInitStruct = {LL_RCC_PLL_MUL_3, LL_RCC_PLL_DIV_3};
-    LL_UTILS_ClkInitTypeDef sUTILS_ClkInitStruct = {LL_RCC_SYSCLK_DIV_1, LL_RCC_APB1_DIV_1, LL_RCC_APB2_DIV_1};
-    
-    LL_PLL_ConfigSystemClock_HSI(&sUTILS_PLLInitStruct, &sUTILS_ClkInitStruct);
-    
-    LL_Init1msTick(SystemCoreClock);
-}
-
-int main(void){
-
-    /* Configure the system clock */
-    SystemClock_Config();
-
-    /* Let's pick a pin and toggle it */
-
-    /* Use a structure for this (usually for bulk init), you can also use LL functions */   
-    LL_GPIO_InitTypeDef GPIO_InitStruct;
-    
-    /* Enable the GPIO clock for GPIOA*/
-    LL_AHB1_GRP1_EnableClock(LL_AHB1_GRP1_PERIPH_GPIOA);
-
-    /* Enable clock for SYSCFG */
-    LL_APB2_GRP1_EnableClock(LL_APB2_GRP1_PERIPH_SYSCFG);
-
-    /* Set up port A parameters */
-    LL_GPIO_StructInit(&GPIO_InitStruct);                   // init the struct with some sensible defaults 
-    GPIO_InitStruct.Pin = LL_GPIO_PIN_5;                    // GPIO pin 5; on Nucleo there is an LED
-    GPIO_InitStruct.Speed = LL_GPIO_SPEED_FREQ_LOW;         // output speed
-    GPIO_InitStruct.Mode = LL_GPIO_MODE_OUTPUT;             // set as output 
-    GPIO_InitStruct.OutputType = LL_GPIO_OUTPUT_PUSHPULL;   // make it a push pull
-    LL_GPIO_Init(GPIOA, &GPIO_InitStruct);                  // initialize PORT A
- 
-    /* Toggle forever */
-    while(1){
-        LL_mDelay(250);
-        LL_GPIO_TogglePin(GPIOA, LL_GPIO_PIN_5);
+        (*(volatile unsigned short *)(0x40011014)) = (1 << 13);
+        for (int i = 0; i < 500000; ++i) __asm__("nop");
     }
-
-    return 0;
 }
+
+__attribute__ ((section(".vectors")))
+struct {
+    unsigned int *initial_sp_value;
+    void (*reset)(void);
+    void (*nmi)(void);
+    void (*hard_fault)(void);
+    void (*memory_manage_fault)(void);
+    void (*bus_fault)(void);
+    void (*usage_fault)(void);
+    void (*reserved_x001c[4])(void);
+    void (*sv_call)(void);
+    void (*debug_monitor)(void);
+    void (*reserved_x0034)(void);
+    void (*pend_sv)(void);
+    void (*systick)(void);
+    void (*irq[68])(void);
+} vector_table = {
+    .reset = reset_handler,
+};
 #+END_SRC
 
 Once there we can just add it as a special executable into our cmake
 #+BEGIN_SRC cmake :tangle CMakeLists.txt
-  add_executable(${PROJECT_NAME}.elf ${STARTUP_FILE} 
-    src/main.c
-    src/stm32f1xx_it.c
-    src/system_stm32f1xx.c)
+  add_executable(${PROJECT_NAME}.elf ${STARTUP_FILE}
+    src/main.c)
   target_include_directories(${PROJECT_NAME}.elf PUBLIC inc)
 #+END_SRC
 and then link it to our library
@@ -173,6 +202,34 @@ Canonically this is done in a separate file so that you can subsitute other poss
 #+END_SRC
 If you skip writing a toolchain file then CMake will default to the system compiler and things will start to slowly go wrong for you (it generally doesn't blow up into your face here)
 
+Next we need to tell the linker what linker script to use (which is a bit ugly in CMake)
+
+#+BEGIN_SRC cmake :tangle CMakeLists.txt
+        set_target_properties(
+          ${PROJECT_NAME}.elf
+          PROPERTIES
+          LINK_FLAGS
+          "-T${PROJECT_SOURCE_DIR}/STM32F103RBTx_FLASH.ld \
+           -Wl,--gc-sections \
+           -Wl,-Map=${PROJECT_NAME}.map")
+#+END_SRC
+
+I'm appending this to the =CMakeLists.txt=, but it's maybe something that should be in the toolchain file.
+
+I also added two more linker options (you can see it's a linker option b/c it starts with a =-Wl=)
+
+- =--gc-sections= this tells the linker to remove unused code/data from the final executable. There is a pesky ~_exit()~ function referrence that will often get slipped into your executable by the compiler. B/c we are running on a microcontroller the code never exits (it can't quit and hand off executation to an OS after all!) so this exit needs to be removed by the linker. Otherwise the linker will complain you never defined an exit function.
+
+- =-Map= prints a link map:
+   + Where object files and symbols are mapped into memory.
+   + How common symbols are allocated.
+   + All archive members included in the link, with a mention of the symbol which caused the archive member to be brought in.
+
+The link map is like a high-level overview of how your code looks like
+
+More linker options are explained in details here: https://ftp.gnu.org/old-gnu/Manuals/ld-2.9.1/html_node/ld_3.html
+
+
 We then also need to let the compiler know our target architecture and some compiler options (taken from [[https://github.com/PurpleAlien/stm32-minimal/blob/master/Makefile][PurpleAlien]])
 
 #+BEGIN_SRC cmake :tangle CMakeLists.txt
@@ -196,44 +253,6 @@ We then also need to let the compiler know our target architecture and some comp
     -specs=nosys.specs)
 #+END_SRC
 *TODO* Explain all of these...
-** The Linker Script
-
-The last bit to get everything working together is a special script that we feed to the linker (specified above in the toolchain)
-
-When an application normally runs on a desktop machine it's generally running using virtual memory in a virtual application-specific address space. From the applications point of view it can manipulate it's own memory however it wants - and it's the operating system that then translates that into safe operations on the actually memory (for instance to insure that the applications doesn't touch any memory region it shouldn't)
-
-On a simple microcontroller there is no operating system to manage the memory, and the memory is shared with other functionality. As we saw in the startup script, some addresses are reserved for peripherals, other addresses are for interrupts and reset bits, the stack and heap are allocated some place and there is also a split between ROM and RAM. So we can't just use the default linker and let it do whatever it wants. We need to specify the address space it can use via a linker script.
-
-Here CMake is a deficient, but you can tell it about a linker script with the following lines:
-
-#+BEGIN_SRC cmake :tangle CMakeLists.txt
-        set_target_properties(
-          ${PROJECT_NAME}.elf 
-          PROPERTIES 
-          LINK_FLAGS 
-          "-T${PROJECT_SOURCE_DIR}/STM32F103RBTx_FLASH.ld \
-           -Wl,--gc-sections \
-           -Wl,-Map=${PROJECT_NAME}.map")
-#+END_SRC
-
-I'm appending this to the =CMakeLists.txt=, but it's maybe something that should be in the toolchain file.
-
-I also added two more linker options (you can see it's a linker option by the =-Wl= before it)
-
-- =--gc-sections= this tells the linker to remove unused code/data from the final executable. There is a pesky ~_exit()~ function referrence that will often get slipped into your executable by the compiler. B/c we are running on a microcontroller the code never exits (it can't quit and hand off executation to an OS after all!) so this exit needs to be removed by the linker. Otherwise the linker will complain you never defined an exit function.
-
-- =-Map= prints a link map:
-   + Where object files and symbols are mapped into memory.
-   + How common symbols are allocated.
-   + All archive members included in the link, with a mention of the symbol which caused the archive member to be brought in.
-
-The link map is like a high-level overview of how your code looks like
-
-More linker options are explained in details here: https://ftp.gnu.org/old-gnu/Manuals/ld-2.9.1/html_node/ld_3.html
-
-#+BEGIN_QUOTE
-*Note*:in ~STM32Cube_FW_F1_V1.6.0/Middlewares~ there are additional libraries that sorta live on top of all of this and do more complicated stuff like TCP/IP USB..stuff and Filesystem things. Basically things that are kinda complicated you probably want to avoid writing yourself. I'm completely skipping this :)
-#+END_QUOTE
 
 * Getting the code on the chip
 ** Building

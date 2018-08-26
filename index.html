@@ -4,7 +4,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
 <head>
 <title>Bluepill: a GCC/CMake build environment ..</title>
-<!-- 2018-08-21 Tue 22:37 -->
+<!-- 2018-08-26 Sun 20:58 -->
 <meta  http-equiv="Content-Type" content="text/html;charset=utf-8" />
 <meta  name="generator" content="Org-mode" />
 <meta  name="author" content="George Kontsevich" />
@@ -150,11 +150,11 @@ for the JavaScript code in this tag.
 </li>
 <li><a href="#sec-2">Anatomy of a build</a>
 <ul>
-<li><a href="#sec-2-1">The Startup File</a></li>
-<li><a href="#sec-2-2">The STM Libraries</a></li>
-<li><a href="#sec-2-3">Our blinky code (WIP)</a></li>
-<li><a href="#sec-2-4">The toolchain</a></li>
-<li><a href="#sec-2-5">The Linker Script</a></li>
+<li><a href="#sec-2-1">The Linker Script</a></li>
+<li><a href="#sec-2-2">The Startup File (WIP)</a></li>
+<li><a href="#sec-2-3">The STM Libraries</a></li>
+<li><a href="#sec-2-4">Our blinky code (WIP)</a></li>
+<li><a href="#sec-2-5">The toolchain</a></li>
 </ul>
 </li>
 <li><a href="#sec-3">Getting the code on the chip</a>
@@ -222,10 +222,85 @@ The blessed way of building things for the STM32 series chips is using their wiz
 <h2 id="sec-2">Anatomy of a build</h2>
 <div class="outline-text-2" id="text-2">
 </div><div id="outline-container-sec-2-1" class="outline-3">
-<h3 id="sec-2-1">The Startup File</h3>
+<h3 id="sec-2-1">The Linker Script</h3>
 <div class="outline-text-3" id="text-2-1">
 <p>
-This first catch with programming the microcontroller is that the system can't simply start at the top of <code>main()</code> and work through the code like on a normal machine. When the chip is powered off the program is stored permanently in the Flash memory (ROM) and because there is no operating system to loading the program into RAM we need to do that ourselves in addition to initializing system clocks and event handlers.
+When an application normally runs on a desktop machine it's generally running using virtual memory in a virtual application-specific address space. From the applications point of view it can manipulate it's own memory however it wants - and it's the operating system that then translates that into safe operations on the actually memory (for instance to insure that the applications doesn't touch any memory region it shouldn't)
+</p>
+
+<p>
+On a simple microcontroller there is no operating system to manage the memory, and the memory is shared with other functionality - some addresses are reserved for peripherals, other addresses are for interrupts and reset bits, the stack and heap are allocated some device-specific place and there is also a split between ROM and RAM. 
+</p>
+
+<p>
+So because we can't just start at address zero and run foward or drop in a <code>main()</code> randomly and start there, we need to tell the linker what the code layout is though a custom <b>linker script</b>
+</p>
+
+<div class="org-src-container">
+
+<pre class="src src-c">MEMORY
+{
+    rom (rx) : ORIGIN = 0x08000000, LENGTH = 128K
+    ram (rwx) : ORIGIN = 0x20000000, LENGTH = 20K
+}
+</pre>
+</div>
+
+<p>
+Even give that, code on a microcontroller doesn't start at the first address of ROM and go from there (though you can make it kinda work that way). The way it works is that certain external factors generate interrupt signals and the chip responds by running code and then returning to whatever it was doing before. These factors can be a clock running out, a peripheral wanting attention, an attached debugger wanting a halt, etc.
+</p>
+
+<p>
+So instead of a <code>main()</code> or something, the first thing in ROM is a vector table - a table of pointers to the different <b>interrupt handlers</b> - ie. the code that is run when each interrupt happens. So we need to tell the linker that there will be a vector table
+</p>
+<div class="org-src-container">
+
+<pre class="src src-c">EXTERN(vector_table);
+</pre>
+</div>
+<p>
+<code>vector_table</code> is just not a special keyword, it's just a label we are giving the linker. It's written as <code>EXTERN</code>, meaning it'll look for its definition in our code, so we need to not forget to define this later on!
+</p>
+
+<p>
+The first interrupt in the table is special and it's the one that is generated when the system is powered on, the user presses the reset button, or the code runs out of things to do. The code that it triggers is appropriately called the <b>reset handeler</b>
+</p>
+
+<p>
+That the code should start at the <b>reset handler</b>
+</p>
+<div class="org-src-container">
+
+<pre class="src src-c">ENTRY(reset_handler);
+</pre>
+</div>
+<p>
+Again, this is just a symbol and the linker will look for its value in our code during linking.
+</p>
+
+<p>
+Lastly we just need to tell the linker that we want those vectors first in the ROM and aligned at the byte level (b/c the micro reads things in byte sized chucks - haha)
+</p>
+<div class="org-src-container">
+
+<pre class="src src-c">SECTIONS
+{
+    .text : {
+        *(.vectors)
+        *(.text*)
+        . = ALIGN(4);
+    } &gt;rom
+}
+</pre>
+</div>
+</div>
+</div>
+
+<div id="outline-container-sec-2-2" class="outline-3">
+<h3 id="sec-2-2">The Startup File (WIP)</h3>
+<div class="outline-text-3" id="text-2-2">
+<p>
+TODO: Copied from elsewhere&#x2026; startup needs to be pulled out of <code>satoshinm</code>'s main.c
 </p>
 
 <p>
@@ -268,9 +343,9 @@ We need to tell CMake that this file will include assembly so that it doesnt' fr
 </div>
 </div>
 
-<div id="outline-container-sec-2-2" class="outline-3">
-<h3 id="sec-2-2">The STM Libraries</h3>
-<div class="outline-text-3" id="text-2-2">
+<div id="outline-container-sec-2-3" class="outline-3">
+<h3 id="sec-2-3">The STM Libraries</h3>
+<div class="outline-text-3" id="text-2-3">
 <p>
 Next we need actual libraries to write code with - otherwise we are kinda stuck writing assembly and poking at memory addresses with the datasheet. These are all provided in one bundle called <b>Cube</b> and it's on <a href="https://www.st.com/content/st_com/en/products/embedded-software/mcus-embedded-software/stm32-embedded-software/stm32cube-mcu-packages/stm32cubef1.html">the STM website</a>. Here is a quick digest of what you get:
 </p>
@@ -302,71 +377,63 @@ The library bundle has been added as a submodule to this project, but if you for
 <pre class="src src-cmake"><span style="color: #ef2929;">add_subdirectory</span>(stm32f1-ll)
 </pre>
 </div>
+
+<blockquote>
+<p>
+<b>Note</b>:in <code>STM32Cube_FW_F1_V1.6.0/Middlewares</code> there are additional libraries that sorta live on top of all of this and do more complicated stuff like TCP/IP USB..stuff and Filesystem things. Basically things that are kinda complicated you probably want to avoid writing yourself. I'm completely skipping this :)
+</p>
+</blockquote>
 </div>
 </div>
 
-<div id="outline-container-sec-2-3" class="outline-3">
-<h3 id="sec-2-3">Our blinky code (WIP)</h3>
-<div class="outline-text-3" id="text-2-3">
+<div id="outline-container-sec-2-4" class="outline-3">
+<h3 id="sec-2-4">Our blinky code (WIP)</h3>
+<div class="outline-text-3" id="text-2-4">
 <p>
 Next we can write a little program to blink a light and put it into <code>/src/main.c</code>
 </p>
 
+<p>
+TODO: Write my own :)
+Ripped directly from <a href="https://github.com/satoshinm/pill_blink/blob/master/bare-metal/pill_blink.c">https://github.com/satoshinm/pill_blink/blob/master/bare-metal/pill_blink.c</a> for now&#x2026;
+</p>
+
 <div class="org-src-container">
 
-<pre class="src src-c"><span style="color: #b218b2;">#include</span> <span style="color: #ff1f8b;">&lt;stdlib.h&gt;</span>
+<pre class="src src-c"><span style="color: #18b2b2;">void</span> <span style="color: #00af00;">__attribute__</span> ((weak, naked)) <span style="color: #ef2929;">reset_handler</span>(<span style="color: #18b2b2;">void</span>) {
+    (*(<span style="color: #00af00;">volatile</span> <span style="color: #18b2b2;">unsigned</span> <span style="color: #18b2b2;">int</span> *)(0x40021018)) |= (1 &lt;&lt; 4);
 
-<span style="color: #b218b2;">#include</span> <span style="color: #ff1f8b;">"stm32f1xx.h"</span>
+    (*(<span style="color: #00af00;">volatile</span> <span style="color: #18b2b2;">unsigned</span> <span style="color: #18b2b2;">int</span> *)(0x40011004)) |= (0x00 &lt;&lt; (((13 - 8) * 4) + 2));
+    (*(<span style="color: #00af00;">volatile</span> <span style="color: #18b2b2;">unsigned</span> <span style="color: #18b2b2;">int</span> *)(0x40011004)) |= (0x02 &lt;&lt; ((13 - 8) * 4));
 
-<span style="color: #b218b2;">#include</span> <span style="color: #ff1f8b;">"stm32f1xx_ll_gpio.h"</span>
-<span style="color: #b218b2;">#include</span> <span style="color: #ff1f8b;">"stm32f1xx_ll_utils.h"</span>
-<span style="color: #b218b2;">#include</span> <span style="color: #ff1f8b;">"stm32f1xx_ll_rcc.h"</span>
-<span style="color: #b2b2b2; font-style: italic;">//</span><span style="color: #b2b2b2; font-style: italic;">#include "stm32f1xx_conf.h"</span>
+    <span style="color: #00af00;">while</span>(1) {
+        (*(<span style="color: #00af00;">volatile</span> <span style="color: #18b2b2;">unsigned</span> <span style="color: #18b2b2;">int</span> *)(0x40011010)) = (1 &lt;&lt; 13);
+        <span style="color: #00af00;">for</span> (<span style="color: #18b2b2;">int</span> <span style="color: #ff8700;">i</span> = 0; i &lt; 1000000; ++i) <span style="color: #00af00;">__asm__</span>(<span style="color: #ff1f8b;">"nop"</span>);
 
-<span style="color: #18b2b2;">void</span> <span style="color: #ef2929;">SystemClock_Config</span>(<span style="color: #18b2b2;">void</span>){
-
-    <span style="color: #b2b2b2; font-style: italic;">/* </span><span style="color: #b2b2b2; font-style: italic;">Clock init stuff </span><span style="color: #b2b2b2; font-style: italic;">*/</span> 
-
-    <span style="color: #18b2b2;">LL_UTILS_PLLInitTypeDef</span> <span style="color: #ff8700;">sUTILS_PLLInitStruct</span> = {LL_RCC_PLL_MUL_3, LL_RCC_PLL_DIV_3};
-    <span style="color: #18b2b2;">LL_UTILS_ClkInitTypeDef</span> <span style="color: #ff8700;">sUTILS_ClkInitStruct</span> = {LL_RCC_SYSCLK_DIV_1, LL_RCC_APB1_DIV_1, LL_RCC_APB2_DIV_1};
-
-    LL_PLL_ConfigSystemClock_HSI(&amp;sUTILS_PLLInitStruct, &amp;sUTILS_ClkInitStruct);
-
-    LL_Init1msTick(SystemCoreClock);
-}
-
-<span style="color: #18b2b2;">int</span> <span style="color: #ef2929;">main</span>(<span style="color: #18b2b2;">void</span>){
-
-    <span style="color: #b2b2b2; font-style: italic;">/* </span><span style="color: #b2b2b2; font-style: italic;">Configure the system clock </span><span style="color: #b2b2b2; font-style: italic;">*/</span>
-    SystemClock_Config();
-
-    <span style="color: #b2b2b2; font-style: italic;">/* </span><span style="color: #b2b2b2; font-style: italic;">Let's pick a pin and toggle it </span><span style="color: #b2b2b2; font-style: italic;">*/</span>
-
-    <span style="color: #b2b2b2; font-style: italic;">/* </span><span style="color: #b2b2b2; font-style: italic;">Use a structure for this (usually for bulk init), you can also use LL functions </span><span style="color: #b2b2b2; font-style: italic;">*/</span>   
-    <span style="color: #18b2b2;">LL_GPIO_InitTypeDef</span> <span style="color: #ff8700;">GPIO_InitStruct</span>;
-
-    <span style="color: #b2b2b2; font-style: italic;">/* </span><span style="color: #b2b2b2; font-style: italic;">Enable the GPIO clock for GPIOA</span><span style="color: #b2b2b2; font-style: italic;">*/</span>
-    LL_AHB1_GRP1_EnableClock(LL_AHB1_GRP1_PERIPH_GPIOA);
-
-    <span style="color: #b2b2b2; font-style: italic;">/* </span><span style="color: #b2b2b2; font-style: italic;">Enable clock for SYSCFG </span><span style="color: #b2b2b2; font-style: italic;">*/</span>
-    LL_APB2_GRP1_EnableClock(LL_APB2_GRP1_PERIPH_SYSCFG);
-
-    <span style="color: #b2b2b2; font-style: italic;">/* </span><span style="color: #b2b2b2; font-style: italic;">Set up port A parameters </span><span style="color: #b2b2b2; font-style: italic;">*/</span>
-    LL_GPIO_StructInit(&amp;GPIO_InitStruct);                   <span style="color: #b2b2b2; font-style: italic;">// </span><span style="color: #b2b2b2; font-style: italic;">init the struct with some sensible defaults </span>
-    GPIO_InitStruct.Pin = LL_GPIO_PIN_5;                    <span style="color: #b2b2b2; font-style: italic;">// </span><span style="color: #b2b2b2; font-style: italic;">GPIO pin 5; on Nucleo there is an LED</span>
-    GPIO_InitStruct.Speed = LL_GPIO_SPEED_FREQ_LOW;         <span style="color: #b2b2b2; font-style: italic;">// </span><span style="color: #b2b2b2; font-style: italic;">output speed</span>
-    GPIO_InitStruct.Mode = LL_GPIO_MODE_OUTPUT;             <span style="color: #b2b2b2; font-style: italic;">// </span><span style="color: #b2b2b2; font-style: italic;">set as output </span>
-    GPIO_InitStruct.OutputType = LL_GPIO_OUTPUT_PUSHPULL;   <span style="color: #b2b2b2; font-style: italic;">// </span><span style="color: #b2b2b2; font-style: italic;">make it a push pull</span>
-    LL_GPIO_Init(GPIOA, &amp;GPIO_InitStruct);                  <span style="color: #b2b2b2; font-style: italic;">// </span><span style="color: #b2b2b2; font-style: italic;">initialize PORT A</span>
-
-    <span style="color: #b2b2b2; font-style: italic;">/* </span><span style="color: #b2b2b2; font-style: italic;">Toggle forever </span><span style="color: #b2b2b2; font-style: italic;">*/</span>
-    <span style="color: #00af00;">while</span>(1){
-        LL_mDelay(250);
-        LL_GPIO_TogglePin(GPIOA, LL_GPIO_PIN_5);
+        (*(<span style="color: #00af00;">volatile</span> <span style="color: #18b2b2;">unsigned</span> <span style="color: #18b2b2;">short</span> *)(0x40011014)) = (1 &lt;&lt; 13);
+        <span style="color: #00af00;">for</span> (<span style="color: #18b2b2;">int</span> <span style="color: #ff8700;">i</span> = 0; i &lt; 500000; ++i) <span style="color: #00af00;">__asm__</span>(<span style="color: #ff1f8b;">"nop"</span>);
     }
-
-    <span style="color: #00af00;">return</span> 0;
 }
+
+<span style="color: #00af00;">__attribute__</span> ((section(<span style="color: #ff1f8b;">".vectors"</span>)))
+<span style="color: #00af00;">struct</span> {
+    <span style="color: #18b2b2;">unsigned</span> <span style="color: #18b2b2;">int</span> *<span style="color: #ff8700;">initial_sp_value</span>;
+    <span style="color: #18b2b2;">void</span> (*<span style="color: #ef2929;">reset</span>)(<span style="color: #18b2b2;">void</span>);
+    <span style="color: #18b2b2;">void</span> (*<span style="color: #ef2929;">nmi</span>)(<span style="color: #18b2b2;">void</span>);
+    <span style="color: #18b2b2;">void</span> (*<span style="color: #ef2929;">hard_fault</span>)(<span style="color: #18b2b2;">void</span>);
+    <span style="color: #18b2b2;">void</span> (*<span style="color: #ef2929;">memory_manage_fault</span>)(<span style="color: #18b2b2;">void</span>);
+    <span style="color: #18b2b2;">void</span> (*<span style="color: #ef2929;">bus_fault</span>)(<span style="color: #18b2b2;">void</span>);
+    <span style="color: #18b2b2;">void</span> (*<span style="color: #ef2929;">usage_fault</span>)(<span style="color: #18b2b2;">void</span>);
+    <span style="color: #18b2b2;">void</span> (*<span style="color: #ef2929;">reserved_x001c</span>[4])(<span style="color: #18b2b2;">void</span>);
+    <span style="color: #18b2b2;">void</span> (*<span style="color: #ef2929;">sv_call</span>)(<span style="color: #18b2b2;">void</span>);
+    <span style="color: #18b2b2;">void</span> (*<span style="color: #ef2929;">debug_monitor</span>)(<span style="color: #18b2b2;">void</span>);
+    <span style="color: #18b2b2;">void</span> (*<span style="color: #ef2929;">reserved_x0034</span>)(<span style="color: #18b2b2;">void</span>);
+    <span style="color: #18b2b2;">void</span> (*<span style="color: #ef2929;">pend_sv</span>)(<span style="color: #18b2b2;">void</span>);
+    <span style="color: #18b2b2;">void</span> (*<span style="color: #ef2929;">systick</span>)(<span style="color: #18b2b2;">void</span>);
+    <span style="color: #18b2b2;">void</span> (*<span style="color: #ef2929;">irq</span>[68])(<span style="color: #18b2b2;">void</span>);
+} <span style="color: #ff8700;">vector_table</span> = {
+    .reset = reset_handler,
+};
 </pre>
 </div>
 
@@ -375,10 +442,8 @@ Once there we can just add it as a special executable into our cmake
 </p>
 <div class="org-src-container">
 
-<pre class="src src-cmake"><span style="color: #ef2929;">add_executable</span>(${<span style="color: #ff8700;">PROJECT_NAME</span>}.elf ${<span style="color: #ff8700;">STARTUP_FILE</span>} 
-  src/main.c
-  src/stm32f1xx_it.c
-  src/system_stm32f1xx.c)
+<pre class="src src-cmake"><span style="color: #ef2929;">add_executable</span>(${<span style="color: #ff8700;">PROJECT_NAME</span>}.elf ${<span style="color: #ff8700;">STARTUP_FILE</span>}
+  src/main.c)
 <span style="color: #ef2929;">target_include_directories</span>(${<span style="color: #ff8700;">PROJECT_NAME</span>}.elf PUBLIC inc)
 </pre>
 </div>
@@ -392,9 +457,9 @@ and then link it to our library
 </div>
 </div>
 </div>
-<div id="outline-container-sec-2-4" class="outline-3">
-<h3 id="sec-2-4">The toolchain</h3>
-<div class="outline-text-3" id="text-2-4">
+<div id="outline-container-sec-2-5" class="outline-3">
+<h3 id="sec-2-5">The toolchain</h3>
+<div class="outline-text-3" id="text-2-5">
 <p>
 Now that we have the code to start up the chip and the code to blink a light we just need to specify the compiler and flags we will run. I'm building using <code>gcc-arm-none-eabi</code> and its associated tools. I did this on a Debian system where this version of gcc can be installed from the repository (name <code>gcc-arm-none-eabi</code>)
 </p>
@@ -428,6 +493,55 @@ If you skip writing a toolchain file then CMake will default to the system compi
 </p>
 
 <p>
+Next we need to tell the linker what linker script to use (which is a bit ugly in CMake)
+</p>
+
+<div class="org-src-container">
+
+<pre class="src src-cmake"><span style="color: #ef2929;">set_target_properties</span>(
+  ${<span style="color: #ff8700;">PROJECT_NAME</span>}.elf
+  PROPERTIES
+  LINK_FLAGS
+  <span style="color: #ff1f8b;">"-T${</span><span style="color: #ff8700;">PROJECT_SOURCE_DIR</span><span style="color: #ff1f8b;">}/STM32F103RBTx_FLASH.ld \</span>
+<span style="color: #ff1f8b;">   -Wl,--gc-sections \</span>
+<span style="color: #ff1f8b;">   -Wl,-Map=${</span><span style="color: #ff8700;">PROJECT_NAME</span><span style="color: #ff1f8b;">}.map"</span>)
+</pre>
+</div>
+
+<p>
+I'm appending this to the <code>CMakeLists.txt</code>, but it's maybe something that should be in the toolchain file.
+</p>
+
+<p>
+I also added two more linker options (you can see it's a linker option b/c it starts with a <code>-Wl</code>)
+</p>
+
+<ul class="org-ul">
+<li><code>--gc-sections</code> this tells the linker to remove unused code/data from the final executable. There is a pesky <code>_exit()</code> function referrence that will often get slipped into your executable by the compiler. B/c we are running on a microcontroller the code never exits (it can't quit and hand off executation to an OS after all!) so this exit needs to be removed by the linker. Otherwise the linker will complain you never defined an exit function.
+</li>
+
+<li><code>-Map</code> prints a link map:
+<ul class="org-ul">
+<li>Where object files and symbols are mapped into memory.
+</li>
+<li>How common symbols are allocated.
+</li>
+<li>All archive members included in the link, with a mention of the symbol which caused the archive member to be brought in.
+</li>
+</ul>
+</li>
+</ul>
+
+<p>
+The link map is like a high-level overview of how your code looks like
+</p>
+
+<p>
+More linker options are explained in details here: <a href="https://ftp.gnu.org/old-gnu/Manuals/ld-2.9.1/html_node/ld_3.html">https://ftp.gnu.org/old-gnu/Manuals/ld-2.9.1/html_node/ld_3.html</a>
+</p>
+
+
+<p>
 We then also need to let the compiler know our target architecture and some compiler options (taken from <a href="https://github.com/PurpleAlien/stm32-minimal/blob/master/Makefile">PurpleAlien</a>)
 </p>
 
@@ -456,76 +570,6 @@ We then also need to let the compiler know our target architecture and some comp
 <p>
 <b>TODO</b> Explain all of these&#x2026;
 </p>
-</div>
-</div>
-<div id="outline-container-sec-2-5" class="outline-3">
-<h3 id="sec-2-5">The Linker Script</h3>
-<div class="outline-text-3" id="text-2-5">
-<p>
-The last bit to get everything working together is a special script that we feed to the linker (specified above in the toolchain)
-</p>
-
-<p>
-When an application normally runs on a desktop machine it's generally running using virtual memory in a virtual application-specific address space. From the applications point of view it can manipulate it's own memory however it wants - and it's the operating system that then translates that into safe operations on the actually memory (for instance to insure that the applications doesn't touch any memory region it shouldn't)
-</p>
-
-<p>
-On a simple microcontroller there is no operating system to manage the memory, and the memory is shared with other functionality. As we saw in the startup script, some addresses are reserved for peripherals, other addresses are for interrupts and reset bits, the stack and heap are allocated some place and there is also a split between ROM and RAM. So we can't just use the default linker and let it do whatever it wants. We need to specify the address space it can use via a linker script.
-</p>
-
-<p>
-Here CMake is a deficient, but you can tell it about a linker script with the following lines:
-</p>
-
-<div class="org-src-container">
-
-<pre class="src src-cmake"><span style="color: #ef2929;">set_target_properties</span>(
-  ${<span style="color: #ff8700;">PROJECT_NAME</span>}.elf 
-  PROPERTIES 
-  LINK_FLAGS 
-  <span style="color: #ff1f8b;">"-T${</span><span style="color: #ff8700;">PROJECT_SOURCE_DIR</span><span style="color: #ff1f8b;">}/STM32F103RBTx_FLASH.ld \</span>
-<span style="color: #ff1f8b;">   -Wl,--gc-sections \</span>
-<span style="color: #ff1f8b;">   -Wl,-Map=${</span><span style="color: #ff8700;">PROJECT_NAME</span><span style="color: #ff1f8b;">}.map"</span>)
-</pre>
-</div>
-
-<p>
-I'm appending this to the <code>CMakeLists.txt</code>, but it's maybe something that should be in the toolchain file.
-</p>
-
-<p>
-I also added two more linker options (you can see it's a linker option by the <code>-Wl</code> before it)
-</p>
-
-<ul class="org-ul">
-<li><code>--gc-sections</code> this tells the linker to remove unused code/data from the final executable. There is a pesky <code>_exit()</code> function referrence that will often get slipped into your executable by the compiler. B/c we are running on a microcontroller the code never exits (it can't quit and hand off executation to an OS after all!) so this exit needs to be removed by the linker. Otherwise the linker will complain you never defined an exit function.
-</li>
-
-<li><code>-Map</code> prints a link map:
-<ul class="org-ul">
-<li>Where object files and symbols are mapped into memory.
-</li>
-<li>How common symbols are allocated.
-</li>
-<li>All archive members included in the link, with a mention of the symbol which caused the archive member to be brought in.
-</li>
-</ul>
-</li>
-</ul>
-
-<p>
-The link map is like a high-level overview of how your code looks like
-</p>
-
-<p>
-More linker options are explained in details here: <a href="https://ftp.gnu.org/old-gnu/Manuals/ld-2.9.1/html_node/ld_3.html">https://ftp.gnu.org/old-gnu/Manuals/ld-2.9.1/html_node/ld_3.html</a>
-</p>
-
-<blockquote>
-<p>
-<b>Note</b>:in <code>STM32Cube_FW_F1_V1.6.0/Middlewares</code> there are additional libraries that sorta live on top of all of this and do more complicated stuff like TCP/IP USB..stuff and Filesystem things. Basically things that are kinda complicated you probably want to avoid writing yourself. I'm completely skipping this :)
-</p>
-</blockquote>
 </div>
 </div>
 </div>
@@ -708,7 +752,7 @@ Transfer rate: 10 KB/sec, 447 bytes/write.
 </div>
 <div id="postamble" class="status">
 <p class="author">Author: George Kontsevich</p>
-<p class="date">Created: 2018-08-21 Tue 22:37</p>
+<p class="date">Created: 2018-08-26 Sun 20:58</p>
 <p class="creator"><a href="http://www.gnu.org/software/emacs/">Emacs</a> 25.2.2 (<a href="http://orgmode.org">Org</a> mode 8.2.10)</p>
 <p class="validation"><a href="http://validator.w3.org/check?uri=referer">Validate</a></p>
 </div>

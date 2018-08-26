@@ -7,13 +7,19 @@ set(STARTUP_FILE "startup_stm32f103xb.s")
 
 add_subdirectory(stm32f1-ll)
 
-add_executable(${PROJECT_NAME}.elf ${STARTUP_FILE} 
-  src/main.c
-  src/stm32f1xx_it.c
-  src/system_stm32f1xx.c)
+add_executable(${PROJECT_NAME}.elf ${STARTUP_FILE}
+  src/main.c)
 target_include_directories(${PROJECT_NAME}.elf PUBLIC inc)
 
 target_link_libraries(${PROJECT_NAME}.elf ll )
+
+set_target_properties(
+  ${PROJECT_NAME}.elf
+  PROPERTIES
+  LINK_FLAGS
+  "-T${PROJECT_SOURCE_DIR}/STM32F103RBTx_FLASH.ld \
+   -Wl,--gc-sections \
+   -Wl,-Map=${PROJECT_NAME}.map")
 
 target_compile_options(${PROJECT_NAME}.elf PUBLIC
   -Wall 
@@ -33,14 +39,6 @@ target_compile_options(${PROJECT_NAME}.elf PUBLIC
   -Wno-unused-const-variable 
   -specs=nano.specs 
   -specs=nosys.specs)
-
-set_target_properties(
-  ${PROJECT_NAME}.elf 
-  PROPERTIES 
-  LINK_FLAGS 
-  "-T${PROJECT_SOURCE_DIR}/STM32F103RBTx_FLASH.ld \
-   -Wl,--gc-sections \
-   -Wl,-Map=${PROJECT_NAME}.map")
 
 file(COPY
   openocd.cfg
