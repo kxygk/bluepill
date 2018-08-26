@@ -4,7 +4,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
 <head>
 <title>Bluepill: a GCC/CMake build environment ..</title>
-<!-- 2018-08-26 Sun 22:15 -->
+<!-- 2018-08-26 Sun 22:28 -->
 <meta  http-equiv="Content-Type" content="text/html;charset=utf-8" />
 <meta  name="generator" content="Org-mode" />
 <meta  name="author" content="George Kontsevich" />
@@ -213,11 +213,13 @@ The blessed way of building things for the STM32 series chips is using their wiz
 
 <li><code>PurpleAlien</code> has another setup - which is very close to what I'm doing. He described it <a href="https://www.purplealienplanet.com/node/69">on his website</a> and the code is on the <a href="https://github.com/PurpleAlien/stm32-minimal">his github</a>. It's a slightly different chip - but the steps should work almost identically for the <code>bluepill</code>.
 </li>
+
+<li><code>satoshinm</code> has <a href="https://satoshinm.github.io/blog/171212_stm32_blue_pill_arm_development_board_first_look_bare_metal_programming.html">a wonderful guide</a> where he guides you through all the challenges he had setting up his bluepill. It's long but very informative and I recommend reading it. He also has an accompanying repository where we has code for the blinky working using bare metal, the STM HAL and another 3rd party library. His code (the bare metal part especially) was absolutely invaluable for getting my setup up and running. Check out <a href="https://github.com/satoshinm/pill_blink">his github</a> project.
+</li>
 </ul>
 </div>
 </div>
 </div>
-
 <div id="outline-container-sec-2" class="outline-2">
 <h2 id="sec-2">Anatomy of a build</h2>
 <div class="outline-text-2" id="text-2">
@@ -767,7 +769,7 @@ Transfer rate: 10 KB/sec, 447 bytes/write.
 </div>
 <div id="postamble" class="status">
 <p class="author">Author: George Kontsevich</p>
-<p class="date">Created: 2018-08-26 Sun 22:15</p>
+<p class="date">Created: 2018-08-26 Sun 22:28</p>
 <p class="creator"><a href="http://www.gnu.org/software/emacs/">Emacs</a> 25.2.2 (<a href="http://orgmode.org">Org</a> mode 8.2.10)</p>
 <p class="validation"><a href="http://validator.w3.org/check?uri=referer">Validate</a></p>
 </div>

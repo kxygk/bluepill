@@ -28,6 +28,7 @@ The blessed way of building things for the STM32 series chips is using their wiz
 
 - =PurpleAlien= has another setup - which is very close to what I'm doing. He described it [[https://www.purplealienplanet.com/node/69][on his website]] and the code is on the [[https://github.com/PurpleAlien/stm32-minimal][his github]]. It's a slightly different chip - but the steps should work almost identically for the =bluepill=.
 
+- =satoshinm= has [[https://satoshinm.github.io/blog/171212_stm32_blue_pill_arm_development_board_first_look_bare_metal_programming.html][a wonderful guide]] where he guides you through all the challenges he had setting up his bluepill. It's long but very informative and I recommend reading it. He also has an accompanying repository where we has code for the blinky working using bare metal, the STM HAL and another 3rd party library. His code (the bare metal part especially) was absolutely invaluable for getting my setup up and running. Check out [[https://github.com/satoshinm/pill_blink][his github]] project.
 * Anatomy of a build
 ** The Linker Script
 When an application normally runs on a desktop machine it's generally running using virtual memory in a virtual application-specific address space. From the applications point of view it can manipulate it's own memory however it wants - and it's the operating system that then translates that into safe operations on the actually memory (for instance to insure that the applications doesn't touch any memory region it shouldn't)
