@@ -4,7 +4,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
 <head>
 <title>Bluepill: a GCC/CMake build environment ..</title>
-<!-- 2018-08-26 Sun 22:28 -->
+<!-- 2018-08-30 Thu 16:39 -->
 <meta  http-equiv="Content-Type" content="text/html;charset=utf-8" />
 <meta  name="generator" content="Org-mode" />
 <meta  name="author" content="George Kontsevich" />
@@ -637,6 +637,10 @@ Ofcourse the trick is to setup OpenOCD first :)
 The software setup is rather baroque and not very obvious - but the <a href="http://openocd.org/documentation/">documentation</a> is very thorough. You start from the beginning and just read very carefully sequentially and it will all make sense. Fortunately for us - the hardware we're using is very standard so we can use some already provided templates. When I install OpenOCD on my Debian system through <code>apt-get install openocd</code> the templates are in <code>/usr/share/openocd/scripts/board/</code>. After browsing some similar boards (like the stm32f4disovery) you kinda get the picture of how the configuration file should look (<b>THESE VALUES CHANGE BETWEEN POINT RELEASE OF OPENOCD. DOUBLE CHECK IF YOU HAVE ISSUE</b>)
 </p>
 
+<p>
+We set the flashing-dongle interface device, then we set the communication protocol with the chip, then the chip type and lastly we tell it how to reset/halt the device. In the last part we want to stop the device so we can flash it - but the exact setting we need is a bit unclear. I suggest looking at <a href="http://openocd.org/doc/html/Reset-Configuration.html">the documentation</a> and trying several settings. I've found the current one works for me (most of the time).
+</p>
+
 <div class="org-src-container">
 
 <pre class="src src-c">source [find interface/stlink-v2.cfg]
@@ -645,7 +649,7 @@ transport select hla_swd
 
 source [find target/stm32f1x_stlink.cfg]
 
-reset_config none
+reset_config srst_nogate
 </pre>
 </div>
 
@@ -769,7 +773,7 @@ Transfer rate: 10 KB/sec, 447 bytes/write.
 </div>
 <div id="postamble" class="status">
 <p class="author">Author: George Kontsevich</p>
-<p class="date">Created: 2018-08-26 Sun 22:28</p>
+<p class="date">Created: 2018-08-30 Thu 16:39</p>
 <p class="creator"><a href="http://www.gnu.org/software/emacs/">Emacs</a> 25.2.2 (<a href="http://orgmode.org">Org</a> mode 8.2.10)</p>
 <p class="validation"><a href="http://validator.w3.org/check?uri=referer">Validate</a></p>
 </div>

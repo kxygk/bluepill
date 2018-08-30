@@ -286,6 +286,8 @@ Ofcourse the trick is to setup OpenOCD first :)
 
 The software setup is rather baroque and not very obvious - but the [[http://openocd.org/documentation/][documentation]] is very thorough. You start from the beginning and just read very carefully sequentially and it will all make sense. Fortunately for us - the hardware we're using is very standard so we can use some already provided templates. When I install OpenOCD on my Debian system through ~apt-get install openocd~ the templates are in =/usr/share/openocd/scripts/board/=. After browsing some similar boards (like the stm32f4disovery) you kinda get the picture of how the configuration file should look (*THESE VALUES CHANGE BETWEEN POINT RELEASE OF OPENOCD. DOUBLE CHECK IF YOU HAVE ISSUE*)
 
+We set the flashing-dongle interface device, then we set the communication protocol with the chip, then the chip type and lastly we tell it how to reset/halt the device. In the last part we want to stop the device so we can flash it - but the exact setting we need is a bit unclear. I suggest looking at [[http://openocd.org/doc/html/Reset-Configuration.html][the documentation]] and trying several settings. I've found the current one works for me (most of the time).
+
 #+BEGIN_SRC c :tangle openocd.cfg
 source [find interface/stlink-v2.cfg]
 
@@ -293,7 +295,7 @@ transport select hla_swd
 
 source [find target/stm32f1x_stlink.cfg]
 
-reset_config none
+reset_config srst_nogate
 #+END_SRC
 
 and we have this saved to a =openocd.cfg=. For convenience we should also tell CMake to copy this file over to the build directory (where we need it when running openocd)
