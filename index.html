@@ -4,7 +4,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
 <head>
 <title>Bluepill: a GCC/CMake build environment ..</title>
-<!-- 2018-08-30 Thu 16:39 -->
+<!-- 2018-09-04 Tue 16:00 -->
 <meta  http-equiv="Content-Type" content="text/html;charset=utf-8" />
 <meta  name="generator" content="Org-mode" />
 <meta  name="author" content="George Kontsevich" />
@@ -245,6 +245,7 @@ Because of these new limitations we can't just start executing code at address z
     rom (rx) : ORIGIN = 0x08000000, LENGTH = 64K
     ram (rwx) : ORIGIN = 0x20000000, LENGTH = 20K
 }
+PROVIDE(_stack = ORIGIN(ram) + LENGTH(ram));
 </pre>
 </div>
 
@@ -315,16 +316,18 @@ The next part is to actually write the reset handler and to define the vector ta
 </blockquote>
 <div class="org-src-container">
 
-<pre class="src src-c"><span style="color: #18b2b2;">void</span> <span style="color: #ef2929;">main</span>(<span style="color: #18b2b2;">void</span>);
-<span style="color: #18b2b2;">void</span> <span style="color: #00af00;">__attribute__</span> ((weak, naked)) <span style="color: #ef2929;">reset_handler</span>(<span style="color: #18b2b2;">void</span>) {
-    (*(<span style="color: #00af00;">volatile</span> <span style="color: #18b2b2;">unsigned</span> <span style="color: #18b2b2;">int</span> *)(0x40021018)) |= (1 &lt;&lt; 4);
+<pre class="src src-c">  <span style="color: #18b2b2;">int</span> <span style="color: #ef2929;">main</span>(<span style="color: #18b2b2;">void</span>);
+  <span style="color: #18b2b2;">void</span> <span style="color: #00af00;">__attribute__</span> ((weak, naked)) <span style="color: #ef2929;">reset_handler</span>(<span style="color: #18b2b2;">void</span>) {
+      (*(<span style="color: #00af00;">volatile</span> <span style="color: #18b2b2;">unsigned</span> <span style="color: #18b2b2;">int</span> *)(0x40021018)) |= (1 &lt;&lt; 4);
 
-    (*(<span style="color: #00af00;">volatile</span> <span style="color: #18b2b2;">unsigned</span> <span style="color: #18b2b2;">int</span> *)(0x40011004)) |= (0x00 &lt;&lt; (((13 - 8) * 4) + 2));
-    (*(<span style="color: #00af00;">volatile</span> <span style="color: #18b2b2;">unsigned</span> <span style="color: #18b2b2;">int</span> *)(0x40011004)) |= (0x02 &lt;&lt; ((13 - 8) * 4));
-    main();
-}
+      (*(<span style="color: #00af00;">volatile</span> <span style="color: #18b2b2;">unsigned</span> <span style="color: #18b2b2;">int</span> *)(0x40011004)) |= (0x00 &lt;&lt; (((13 - 8) * 4) + 2));
+      (*(<span style="color: #00af00;">volatile</span> <span style="color: #18b2b2;">unsigned</span> <span style="color: #18b2b2;">int</span> *)(0x40011004)) |= (0x02 &lt;&lt; ((13 - 8) * 4));
+      main();
+  }
 
-
+<span style="color: #18b2b2;">void</span> <span style="color: #ef2929;">blocking_handler</span>(<span style="color: #18b2b2;">void</span>) { <span style="color: #00af00;">while</span> (1); }
+<span style="color: #18b2b2;">void</span> <span style="color: #ef2929;">null_handler</span>(<span style="color: #18b2b2;">void</span>) {}
+<span style="color: #00af00;">extern</span> <span style="color: #18b2b2;">unsigned</span> <span style="color: #ff8700;">_stack</span>;
 
 <span style="color: #00af00;">__attribute__</span> ((section(<span style="color: #ff1f8b;">".vectors"</span>)))
 <span style="color: #00af00;">struct</span> {
@@ -343,7 +346,84 @@ The next part is to actually write the reset handler and to define the vector ta
     <span style="color: #18b2b2;">void</span> (*<span style="color: #ef2929;">systick</span>)(<span style="color: #18b2b2;">void</span>);
     <span style="color: #18b2b2;">void</span> (*<span style="color: #ef2929;">irq</span>[68])(<span style="color: #18b2b2;">void</span>);
 } <span style="color: #ff8700;">vector_table</span> = {
+    .initial_sp_value = &amp;_stack,
     .reset = reset_handler,
+    .nmi = null_handler,
+    .hard_fault = blocking_handler,
+
+    .sv_call = null_handler,
+    .pend_sv = null_handler,
+    .systick = null_handler,
+    .irq = {
+        null_handler,
+        null_handler,
+        null_handler,
+        null_handler,
+        null_handler,
+        null_handler,
+        null_handler,
+        null_handler,
+        null_handler,
+        null_handler,
+        null_handler,
+        null_handler,
+        null_handler,
+        null_handler,
+        null_handler,
+        null_handler,
+        null_handler,
+        null_handler,
+        null_handler,
+        null_handler,
+        null_handler,
+        null_handler,
+        null_handler,
+        null_handler,
+        null_handler,
+        null_handler,
+        null_handler,
+        null_handler,
+        null_handler,
+        null_handler,
+        null_handler,
+        null_handler,
+        null_handler,
+        null_handler,
+        null_handler,
+        null_handler,
+        null_handler,
+        null_handler,
+        null_handler,
+        null_handler,
+        null_handler,
+        null_handler,
+        null_handler,
+        null_handler,
+        null_handler,
+        null_handler,
+        null_handler,
+        null_handler,
+        null_handler,
+        null_handler,
+        null_handler,
+        null_handler,
+        null_handler,
+        null_handler,
+        null_handler,
+        null_handler,
+        null_handler,
+        null_handler,
+        null_handler,
+        null_handler,
+        null_handler,
+        null_handler,
+        null_handler,
+        null_handler,
+        null_handler,
+        null_handler,
+        null_handler,
+        null_handler,
+    }
 };
 </pre>
 </div>
@@ -773,7 +853,7 @@ Transfer rate: 10 KB/sec, 447 bytes/write.
 </div>
 <div id="postamble" class="status">
 <p class="author">Author: George Kontsevich</p>
-<p class="date">Created: 2018-08-30 Thu 16:39</p>
+<p class="date">Created: 2018-09-04 Tue 16:00</p>
 <p class="creator"><a href="http://www.gnu.org/software/emacs/">Emacs</a> 25.2.2 (<a href="http://orgmode.org">Org</a> mode 8.2.10)</p>
 <p class="validation"><a href="http://validator.w3.org/check?uri=referer">Validate</a></p>
 </div>

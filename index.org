@@ -43,6 +43,7 @@ MEMORY
     rom (rx) : ORIGIN = 0x08000000, LENGTH = 64K
     ram (rwx) : ORIGIN = 0x20000000, LENGTH = 20K
 }
+PROVIDE(_stack = ORIGIN(ram) + LENGTH(ram));
 #+END_SRC
 
 Even give that, code on a microcontroller doesn't by default start at the first address of ROM and go from there (that's more or less how we conceptualize code running on an normal OS). A better way to think about the microcontroller is it's as a machine that recieves interrupt signals from external inputs and the chip responding by running code and then returning to whatever it was doing before. These interrupting inputs can be a clock running out, a peripheral wanting attention, an attached debugger wanting a halt, etc.
@@ -71,6 +72,7 @@ SECTIONS
         . = ALIGN(4);
     } >rom
 }
+
 #+END_SRC
 So the chip doesn't need to hunt for the vector table. It's always in the same spot - and the reset handler is as well.
 
@@ -82,7 +84,7 @@ The next part is to actually write the reset handler and to define the vector ta
 *Note:* There is nothing special about this file for the compiler or linker - it's just another code file - and  you are free to copy it over to your other code files if you want!
 #+END_QUOTE
 #+BEGIN_SRC c :tangle startup_stm32f103xb.c
-  void main(void);
+  int main(void);
   void __attribute__ ((weak, naked)) reset_handler(void) {
       (*(volatile unsigned int *)(0x40021018)) |= (1 << 4);
 
@@ -91,27 +93,106 @@ The next part is to actually write the reset handler and to define the vector ta
       main();
   }
 
+void blocking_handler(void) { while (1); }
+void null_handler(void) {}
+extern unsigned _stack;
 
+__attribute__ ((section(".vectors")))
+struct {
+    unsigned int *initial_sp_value;
+    void (*reset)(void);
+    void (*nmi)(void);
+    void (*hard_fault)(void);
+    void (*memory_manage_fault)(void);
+    void (*bus_fault)(void);
+    void (*usage_fault)(void);
+    void (*reserved_x001c[4])(void);
+    void (*sv_call)(void);
+    void (*debug_monitor)(void);
+    void (*reserved_x0034)(void);
+    void (*pend_sv)(void);
+    void (*systick)(void);
+    void (*irq[68])(void);
+} vector_table = {
+    .initial_sp_value = &_stack,
+    .reset = reset_handler,
+    .nmi = null_handler,
+    .hard_fault = blocking_handler,
 
-  __attribute__ ((section(".vectors")))
-  struct {
-      unsigned int *initial_sp_value;
-      void (*reset)(void);
-      void (*nmi)(void);
-      void (*hard_fault)(void);
-      void (*memory_manage_fault)(void);
-      void (*bus_fault)(void);
-      void (*usage_fault)(void);
-      void (*reserved_x001c[4])(void);
-      void (*sv_call)(void);
-      void (*debug_monitor)(void);
-      void (*reserved_x0034)(void);
-      void (*pend_sv)(void);
-      void (*systick)(void);
-      void (*irq[68])(void);
-  } vector_table = {
-      .reset = reset_handler,
-  };
+    .sv_call = null_handler,
+    .pend_sv = null_handler,
+    .systick = null_handler,
+    .irq = {
+        null_handler,
+        null_handler,
+        null_handler,
+        null_handler,
+        null_handler,
+        null_handler,
+        null_handler,
+        null_handler,
+        null_handler,
+        null_handler,
+        null_handler,
+        null_handler,
+        null_handler,
+        null_handler,
+        null_handler,
+        null_handler,
+        null_handler,
+        null_handler,
+        null_handler,
+        null_handler,
+        null_handler,
+        null_handler,
+        null_handler,
+        null_handler,
+        null_handler,
+        null_handler,
+        null_handler,
+        null_handler,
+        null_handler,
+        null_handler,
+        null_handler,
+        null_handler,
+        null_handler,
+        null_handler,
+        null_handler,
+        null_handler,
+        null_handler,
+        null_handler,
+        null_handler,
+        null_handler,
+        null_handler,
+        null_handler,
+        null_handler,
+        null_handler,
+        null_handler,
+        null_handler,
+        null_handler,
+        null_handler,
+        null_handler,
+        null_handler,
+        null_handler,
+        null_handler,
+        null_handler,
+        null_handler,
+        null_handler,
+        null_handler,
+        null_handler,
+        null_handler,
+        null_handler,
+        null_handler,
+        null_handler,
+        null_handler,
+        null_handler,
+        null_handler,
+        null_handler,
+        null_handler,
+        null_handler,
+        null_handler,
+    }
+};
 #+END_SRC
 If you open up some startup files in templates provided by STM you will see that they're all written in assembly. The rational is that because the resulting code is always the same there no chance of the compiler doing something funny. However if you squint and look at the assembly you will see that the code is doing basically the same thing. It defined a reset handler which then calls a main.
 
