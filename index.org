@@ -361,26 +361,20 @@ The standard open source software for flashing the bluepill is OpenOCD. On fanci
 
 [[file:st-link.jpeg]]
 
-OpenOCD will provide us with an abstraction layer. It will communicate over JTAG or SWD or something to the chip and present us with a standard GDB server. Once it's setup we don't need to deal with the particulars of the how the chip is flashed. We simply go into GDB and tell GDB to upload new code and everything happens automatically for us behind the scenes.
+OpenOCD will provide us with an abstraction layer. It will communicate over JTAG or SWD to the chip and we will communicate with OpenOCD and tell it what we need. 
 
-Ofcourse the trick is to setup OpenOCD first :)
+The software setup is rather baroque - but the [[http://openocd.org/documentation/][documentation]] is very thorough. You start from the beginning and just read very carefully sequentially and it will all make sense. Fortunately for us - the hardware we're using is very standard so we can use some already provided templates. When I install OpenOCD on my Debian system through ~apt-get install openocd~ the templates are in =/usr/share/openocd/scripts/board/=. After browsing some similar boards (like the stm32f4disovery) you kinda get the picture of how the configuration file should look (*THESE VALUES CHANGE BETWEEN POINT RELEASE OF OPENOCD. DOUBLE CHECK THEM IF YOU HAVE ANY ISSUES*)
 
-The software setup is rather baroque and not very obvious - but the [[http://openocd.org/documentation/][documentation]] is very thorough. You start from the beginning and just read very carefully sequentially and it will all make sense. Fortunately for us - the hardware we're using is very standard so we can use some already provided templates. When I install OpenOCD on my Debian system through ~apt-get install openocd~ the templates are in =/usr/share/openocd/scripts/board/=. After browsing some similar boards (like the stm32f4disovery) you kinda get the picture of how the configuration file should look (*THESE VALUES CHANGE BETWEEN POINT RELEASE OF OPENOCD. DOUBLE CHECK IF YOU HAVE ISSUE*)
-
-We set the flashing-dongle interface device, then we set the communication protocol with the chip, then the chip type and lastly we tell it how to reset/halt the device. In the last part we want to stop the device so we can flash it - but the exact setting we need is a bit unclear. I suggest looking at [[http://openocd.org/doc/html/Reset-Configuration.html][the documentation]] and trying several settings. I've found the current one works for me (most of the time).
-
+Note that for the file to run automatically when you type =openocd= in the shell, you need to save the configuration to a file called ~openocd.cfg~ 
 #+BEGIN_SRC c :tangle openocd.cfg
 source [find interface/stlink-v2.cfg]
-
 transport select hla_swd
-
 source [find target/stm32f1x_stlink.cfg]
-
-reset_config srst_nogate
+program blinky.elf verify reset exit
 #+END_SRC
+The configuration is not too complicated. It sets the interface type (ie the ST-LINK flashing dongle thing), then it sets the flashing communication protocol for talking to the chip, then the actual chip type and lastly we tell it to program the chip with the ~.elf~ we just made. After flashing it will verify the code, reset the controller and then exit OpenOCD
 
-and we have this saved to a =openocd.cfg=. For convenience we should also tell CMake to copy this file over to the build directory (where we need it when running openocd)
-
+For convenience we should also tell CMake to copy this file over to the build directory
 #+BEGIN_SRC cmake :tangle CMakeLists.txt
 file(COPY
   openocd.cfg
@@ -388,41 +382,56 @@ file(COPY
   ${CMAKE_BINARY_DIR})
 #+END_SRC
 
-Now in our build directory we simply run ~openocd~ are *root* and it should launch the GDB server. It automatically will detect the ST-LINK V2 USB device in your USB port and then connect to the chip you have connected up. If something is misconfigured of not connected you can piece it together from the errors it gives back to you. Once everything is working you should have an output that looks something like
+So now in our build directory we simply run ~openocd~ and your program should magically upload to the chip and start running. The light should be flashing at this point :)
 
-#+BEGIN_SRC
-$ openocd
+Some things to double check:
+ - The version of OpenOCD you are running... I had weird issues with manually installed OpenOCDs, but the repo one worked great
+ - Check the templates - if you have problems, try some of the other options available
+ - try running OpenOCD as root! Maybe your user doesn't have the right USB permissions or something to that effect
+ - I had weird connection issues that turned out to be due to faulty wires! Thanks to [[https://reddit.com/comments/9ba9n8/comment/e53aa2m?context=3][NeoMarxismIsEvil]] for catching that :)
+ - In the next section about GDB I mention an =unlock= command.. I'm not 100% sure it's necessary - but try it if you're having issues
+
+* Intergrated Development
+One of the big bonuses of this setup is that it will hook into existing tools very easily.
+
+** GDB
+The first basic step is hookin' up a debugger.
+
+For some reason Debian Testing is missing a ~arm-none-eabi-gdb~, so I had to just download the whole GCC toolchain from [[https://developer.arm.com/open-source/gnu-toolchain/gnu-rm/downloads][ARM's website]] (this only works assuming you're running on a x64 machine). Just make sure you don't just run the system GDB! It won't throw you any errors and it will kinda work.. till it doesn't. 
+
+Once we have the right version of *GDB* the next part becomes super easy b/c by default *OpenOCD* will provide us with a GDB server to which we can connect. We just need to disable the part where we flash the program and exit and replace it with a command to reset the chip and stop
+
+#+BEGIN_SRC c :tangle openocd_debug.cfg
+source [find interface/stlink-v2.cfg]
+transport select hla_swd
+source [find target/stm32f1x_stlink.cfg]
+reset_config srst_nogate
+#+END_SRC
+
+I honestly didn't entirely understand all the reset configuration options so if you're having issues I'd suggest looking at [[http://openocd.org/doc/html/Reset-Configuration.html][the documentation]] and trying several different settings. I've found the current one works for me. Again, we just run ~openocd~ but this time the program kinda hangs and sits and waits for a connection:
+
+#+BEGIN_QUOTE
+$ openocd 
 Open On-Chip Debugger 0.10.0
 Licensed under GNU GPL v2
 For bug reports, read
         http://openocd.org/doc/doxygen/bugs.html
-Info : auto-selecting first available session transport "hla_swd". To override use 'transport select <transport>'.
+WARNING: target/stm32f1x_stlink.cfg is deprecated, please switch to target/stm32f1x.cfg
 Info : The selected transport took over low-level target control. The results might differ compared to plain JTAG/SWD
 adapter speed: 1000 kHz
 adapter_nsrst_delay: 100
 none separate
-srst_only separate srst_nogate srst_open_drain connect_deassert_srst
+none separate
 Info : Unable to match requested speed 1000 kHz, using 950 kHz
 Info : Unable to match requested speed 1000 kHz, using 950 kHz
 Info : clock speed 950 kHz
 Info : STLINK v2 JTAG v17 API v2 SWIM v4 VID 0x0483 PID 0x3748
 Info : using stlink api v2
-Info : Target voltage: 2.911807
+Info : Target voltage: 2.913562
 Info : stm32f1x.cpu: hardware has 6 breakpoints, 4 watchpoints
-#+END_SRC
-.. and then it sorta just hangs\\
-What's actually happening is that the GDB server is running in the background and you can connect to it.
-#+BEGIN_QUOTE
-*Note* I tried using the latest OpenOCD from the respository and it had some very weird unpredictable behavior (maybe was playing funny with my system OpenOCD). I'd look into this only if you system repository OpenOCD is older than 0.10.0 - b/c I've confirmed it works at this version
-
-I also have strange power issue... it would on occassion not detect the chip or disconnect. I don't have any immediate suggestions other than turning it off and on again till it works..
 #+END_QUOTE
 
-** GDB
-
-To test the GDB server you now need to make sure you have the right GDB installed. On Debian for some reason there is no ~arm-none-eabi-gdb~ package on testing/buster. So you can just install the whole GCC toolchain from ARM's website (assuming you're running on a x64 machine): https://developer.arm.com/open-source/gnu-toolchain/gnu-rm/downloads
-
-Once you have it installed you need to run ~arm-none-eabi-gdb~ in our build directory and start a GDB session. The next few steps will connect to the OpenOCD server, stop the program running on it, unlock the chip, and load our new program
+We open another terminal and run our ~arm-none-eabi-gdb~ The next few steps will connect to the OpenOCD server, stop the program running on it, unlock the chip, and load our new program
 
 #+BEGIN_SRC 
 > target remote localhost:3333
@@ -431,10 +440,38 @@ Once you have it installed you need to run ~arm-none-eabi-gdb~ in our build dire
 > load blinky.elf
 #+END_SRC
 
-Then you can reset the chip and it should be running your code!
+Now you can set breakpoint, run code, inspect the stack and variables, etc. etc. Look at the GDB manual for all the juicy details - and don't forget about the very handy [[https://ftp.gnu.org/old-gnu/Manuals/gdb-5.1.1/html_chapter/gdb_19.html][TUI Mode]]. Start it with ~C-x C-a~, then hit ~C-x 2~ to bring up the assembly. And type ~s~ to step one line of code at a time and ~si~ to step one assembly instruction at a time!
+
+** KDevelop
+
+To demonstrate how flexible things get thanks to CMake, next I'll show you how to setup KDevelop to run everything for us. In principle this should work equally well with QtCreator or CLion or CQuery/Emacs. This isn't an endorsement of KDevelop over the alternatives b/c is sorta like Visual Studio - a big drop-box driven mess - but I'm just familiar with it and it's quick and easy to get up and running with a CMake project. We'll be able to jump around our code and refactor things in no time. The easiest way to get started is to just get the KDevelop AppImage from [[https://www.kdevelop.org/download][their website]]. Download it, make it executable with ~chmod +x $KDevelopAppImageFile~ and run!
+
+Next you click /Project/ > /Open - Import Project/  and the navigate to a copy of this repository where the =CMakeLists.txt= resides. It should automatically give you a window with the project name and with the CMake Project Manager. Just hit /Finish/ on the bottom row and you will get another window to set up your CMake configuration. Here you need:
+
+ - Select a build directory 
+   + I typically don't go with the default (b/c my code resides on a USB drive) and I build somewhere else on my main disk. Always using a ~project_name/build~ directory encourages people to write sloppy build files that reach into the repository (b/c you can always go ~../~ from the ~/build/~ folder to get to the repository files). But you shouldnt' write code/configurations that assume their built location ;)
+ - The installation prefix can be left blank 
+   + CMake is a bit weird in that it's not just a build tool, but it also has these unnecessary installation features that keep cropping up
+ - Build Type 
+   + This part I don't 100% understand at the moment.. but I think you can go with *Release* here. GDB seems to somehow magically find the matching source code on its own even when you build with no symbols. But if you have issues with debugging don't hesitate to switch to *Debug*
+ - Provide extra arguments to CMake 
+   + Here we need to tell CMake about our toolchain. Unfortunately a lot of people don't use toolchain files - as you always always should - and they just go with the random system defaults. KDevelop seems to encourage this further by not providing a field for the toolchain file..  so you need to add a =-DCMAKE_TOOLCHAIN_FILE=/path/to/your/project/directory/bluepill/toolchain.cmake= in the extra arguments area here (yeah.. this is a bit clunky..)
+
+Then just hit /Run/ and the wheels should start turning. It will load in your whole project and then index your code + LL/CMSIS libraries for a few minutes. At this point you can already hit /Build/ in the top left and make that =elf= file like we did from the command line. Infact, underthe hook KDevelop is doing exactly what we did before manually. If you ~cd~ to your build directory you can still run ~make~ by hand if you want
+
+But now we are also getting the benefits of CMake. You can now click on variables, jump around the code and get all the fancy syntax highlighting you expect in a desktop program
 
 
-*** toolchain quirks
+*** Extras
+KDevelop unfortuantely has some very bizarre default working directories in their configurations...
+
+**** Execute
+To make the /Execute/ button flash the program to the chip go to /Run/ > /Configure Launches.../ and then hit /+ Add/ in the top left and select your target's name from the drop down menu (mine is called =blinky.elf=). In the new screen on the right side, you want to change the /Executable/ from *Project Target* to *Exectuable* and then put in /the full path/ to openocd (mine is ~/usr/bin/openocd~). We also need to set the /Working Directory/ to be the build directory so it can find the =openocd.cfg= file we made. So now when we hit *Execute* on the top bar it will just run =openocd= in the build directory. The way we've set things up, this should flash the chip!
+
+**** Debug (WIP)
+In that same window you will notice there is a *Debug* submenu on the left under our target executable. It's probably possible to get the =OpenOCD/GDB= setup running here as well - but unfortunately here things just got too ugly for me and I couldn't find a sane way to set this up (and I kept having issues where KDevelop wasn't cleaning up the OpenOCD processes correctly). If you find a clean way to get this working then please make an issue/PR and tell me about it :)
+
+** toolchain quirks
 *Note:* Interestingly if I have my toolchain file pointing at the precompiled GCC files from ARM, my final =elf= file ends up looking different when I flash the chip
 
 Using ARM's precompiled GCC =v.7.3.1= :
