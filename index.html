@@ -4,7 +4,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
 <head>
 <title>Bluepill: a GCC/CMake build environment ..</title>
-<!-- 2018-09-06 Thu 19:42 -->
+<!-- 2018-09-06 Thu 19:59 -->
 <meta  http-equiv="Content-Type" content="text/html;charset=utf-8" />
 <meta  name="generator" content="Org-mode" />
 <meta  name="author" content="George Kontsevich" />
@@ -235,7 +235,7 @@ Our end goal is to create an ELF file that we will flash onto the chip. I sugges
 <h2 id="sec-2">Anatomy of a build</h2>
 <div class="outline-text-2" id="text-2">
 <p>
-Unfortunately getting started and just getting a light blinking involved quite a lot of steps since we have no operating system to handle all the background stuff.
+Unfortunately getting started and just getting a light blinking involved quite a lot of steps since we have no operating system to handle all the background stuff. I am writing all the piece out here in detail - but please do consider using the templates provided by STM. Specifically look in the Cube package in <code>STM32Cube_FW_F1_V1.6.0/Projects/STM32F103RB-Nucleo/Examples_LL/GPIO/GPIO_InfiniteLedToggling</code>. Under <code>SW4STM32</code> you will find a startup script and a linker script. And in <code>Src</code> / <code>Inc</code> you will find additional code files
 </p>
 </div>
 <div id="outline-container-sec-2-1" class="outline-3">
@@ -316,6 +316,39 @@ As I mentioned, the reset handler and vector table are just symbols to the linke
 </p>
 </blockquote>
 
+<p>
+The code from top to bottom:
+</p>
+<ul class="org-ul">
+<li>We define a reset handler
+<ul class="org-ul">
+<li>We declare a <code>main()</code> (to be defined in our <code>main.c</code> later)
+</li>
+<li>We initialize some stuff
+</li>
+<li>We call main()
+</li>
+</ul>
+</li>
+<li>We define two dummy interrupt handlers. 
+<ul class="org-ul">
+<li>One that spins for ever
+</li>
+<li>One that does nothing and returns
+</li>
+</ul>
+</li>
+<li>We define our vector table in detail
+<ul class="org-ul">
+<li>The first element is the SP (Stack Pointer)
+</li>
+<li>The second element in always the reset handler
+</li>
+<li>After that are the remaining handlers which are setting to basically do nothing
+</li>
+</ul>
+</li>
+</ul>
 <div class="org-src-container">
 
 <pre class="src src-c">  <span style="color: #18b2b2;">int</span> <span style="color: #ef2929;">main</span>(<span style="color: #18b2b2;">void</span>);
@@ -431,7 +464,7 @@ As I mentioned, the reset handler and vector table are just symbols to the linke
 </div>
 
 <p>
-If you open up some startup files in templates provided by STM you will see that they're all written in assembly. The rational is that because the resulting code is always the same there no chance of the compiler doing something funny. However if you squint and look at the assembly you will see that the code is doing basically the same thing + some extra magic. But on a high level it's also defining a reset handler which then calls a main.
+Now if you open up some startup files in templates provided by STM you will see that they're all written in assembly and they do a little more than we are doing here. The rational for the assembly is that because the resulting code is always the same there no chance of the compiler doing something funny. However if you squint and look at the assembly you will see that the code is doing basically the same thing + some extra magic. But on a high level it's also defining a reset handler which then calls a main. The remaining interrupt handlers then written in C in a separate file called <code>stm32f1xx_it.h/c</code>
 </p>
 
 <p>
@@ -541,7 +574,7 @@ LL_GPIO_SetPinSpeed(GPIOC, LL_GPIO_PIN_13, LL_GPIO_SPEED_FREQ_HIGH);
 </pre>
 </div>
 <p>
-Now that we have the GPIO pin setup we just loop toggling the pin (with a long loop of doing nothing) to create a artificial pause
+Now that we have the GPIO pin setup we just loop toggling the pin (with a long loop of doing nothing) to create a artificial pause.
 </p>
 <div class="org-src-container">
 
@@ -557,7 +590,15 @@ Now that we have the GPIO pin setup we just loop toggling the pin (with a long l
 </pre>
 </div>
 <p>
-And that's it! We can declare our target elf file and link up our <code>main.c</code> with the startup file everything in CMake now.
+And that's it!
+</p>
+
+<p>
+If you look at the GPIO example that comes with the Cube package you will see it does the waitning/spinning in a smarter way using the clock system. But this requires setting up the clock properly and is a bit more complicated. You will also need the <code>system_stm32f1xx.h/c</code> files to configure the clock. For simplicity I've omitted this and kept it simple :)
+</p>
+
+<p>
+We can now return to CMake and declare our target elf file and link up our <code>main.c</code> with the startup file.
 </p>
 <div class="org-src-container">
 
@@ -982,7 +1023,7 @@ Transfer rate: 10 KB/sec, 447 bytes/write.
 </div>
 <div id="postamble" class="status">
 <p class="author">Author: George Kontsevich</p>
-<p class="date">Created: 2018-09-06 Thu 19:42</p>
+<p class="date">Created: 2018-09-06 Thu 19:59</p>
 <p class="creator"><a href="http://www.gnu.org/software/emacs/">Emacs</a> 25.2.2 (<a href="http://orgmode.org">Org</a> mode 8.2.10)</p>
 <p class="validation"><a href="http://validator.w3.org/check?uri=referer">Validate</a></p>
 </div>

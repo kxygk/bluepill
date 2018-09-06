@@ -33,7 +33,7 @@ Our end goal is to create an ELF file that we will flash onto the chip. I sugges
 
 - =satoshinm= has [[https://satoshinm.github.io/blog/171212_stm32_blue_pill_arm_development_board_first_look_bare_metal_programming.html][a wonderful guide]] where he guides you through all the challenges he had setting up his bluepill. It's long but very informative and I recommend reading it. He also has an accompanying repository where we has code for the blinky working using bare metal, the STM HAL and another 3rd party library. His code (the bare metal part especially) was absolutely invaluable for getting my setup up and running. Check out [[https://github.com/satoshinm/pill_blink][his github]] project.
 * Anatomy of a build
-Unfortunately getting started and just getting a light blinking involved quite a lot of steps since we have no operating system to handle all the background stuff.
+Unfortunately getting started and just getting a light blinking involved quite a lot of steps since we have no operating system to handle all the background stuff. I am writing all the piece out here in detail - but please do consider using the templates provided by STM. Specifically look in the Cube package in =STM32Cube_FW_F1_V1.6.0/Projects/STM32F103RB-Nucleo/Examples_LL/GPIO/GPIO_InfiniteLedToggling=. Under =SW4STM32= you will find a startup script and a linker script. And in =Src= / =Inc= you will find additional code files
 ** The Linker Script
 When an application normally runs on a desktop machine it's generally running using virtual memory in a virtual application-specific address space. From the applications point of view it can manipulate it's own memory however it wants - and it's the operating system that then translates that into safe operations on the actually memory (for instance to insure that the applications doesn't touch any memory region it shouldn't)
 
@@ -82,6 +82,18 @@ As I mentioned, the reset handler and vector table are just symbols to the linke
 *Note:* There is nothing special about this file for the compiler or linker - it's just another code file - and  you are free to copy it over to your other code files if you want
 #+END_QUOTE
 
+The code from top to bottom:
+ - We define a reset handler
+   + We declare a =main()= (to be defined in our =main.c= later)
+   + We initialize some stuff
+   + We call main()
+ - We define two dummy interrupt handlers. 
+   + One that spins for ever
+   + One that does nothing and returns
+ - We define our vector table in detail
+   + The first element is the SP (Stack Pointer)
+   + The second element in always the reset handler
+   + After that are the remaining handlers which are setting to basically do nothing
 #+BEGIN_SRC c :tangle startup_stm32f103xb.c
   int main(void);
   void __attribute__ ((weak, naked)) reset_handler(void) {
@@ -194,7 +206,7 @@ struct {
 };
 #+END_SRC
 
-If you open up some startup files in templates provided by STM you will see that they're all written in assembly. The rational is that because the resulting code is always the same there no chance of the compiler doing something funny. However if you squint and look at the assembly you will see that the code is doing basically the same thing + some extra magic. But on a high level it's also defining a reset handler which then calls a main.
+Now if you open up some startup files in templates provided by STM you will see that they're all written in assembly and they do a little more than we are doing here. The rational for the assembly is that because the resulting code is always the same there no chance of the compiler doing something funny. However if you squint and look at the assembly you will see that the code is doing basically the same thing + some extra magic. But on a high level it's also defining a reset handler which then calls a main. The remaining interrupt handlers then written in C in a separate file called =stm32f1xx_it.h/c=
 
 Once we have the file we can add it to CMake
 #+BEGIN_SRC cmake :tangle CMakeLists.txt
@@ -254,7 +266,7 @@ We then set this GPIO pin to be an ouput pin and he set it to be a high speed pi
     LL_GPIO_SetPinMode(GPIOC, LL_GPIO_PIN_13, LL_GPIO_MODE_OUTPUT);
     LL_GPIO_SetPinSpeed(GPIOC, LL_GPIO_PIN_13, LL_GPIO_SPEED_FREQ_HIGH);
 #+END_SRC
-Now that we have the GPIO pin setup we just loop toggling the pin (with a long loop of doing nothing) to create a artificial pause
+Now that we have the GPIO pin setup we just loop toggling the pin (with a long loop of doing nothing) to create a artificial pause.
 #+BEGIN_SRC c :tangle src/main.c
     while (1)
     {
@@ -266,7 +278,11 @@ Now that we have the GPIO pin setup we just loop toggling the pin (with a long l
     }
   }
 #+END_SRC
-And that's it! We can declare our target elf file and link up our =main.c= with the startup file everything in CMake now.
+And that's it!
+
+If you look at the GPIO example that comes with the Cube package you will see it does the waitning/spinning in a smarter way using the clock system. But this requires setting up the clock properly and is a bit more complicated. You will also need the =system_stm32f1xx.h/c= files to configure the clock. For simplicity I've omitted this and kept it simple :)
+
+We can now return to CMake and declare our target elf file and link up our =main.c= with the startup file.
 #+BEGIN_SRC cmake :tangle CMakeLists.txt
   add_executable(${ELF} ${STARTUP_FILE}
     src/main.c)
