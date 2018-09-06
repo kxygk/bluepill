@@ -7,7 +7,6 @@ MEMORY
 PROVIDE(_stack = ORIGIN(ram) + LENGTH(ram));
 
 EXTERN(vector_table);
-
 ENTRY(reset_handler);
 
 SECTIONS

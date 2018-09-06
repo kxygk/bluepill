@@ -33,12 +33,13 @@ Our end goal is to create an ELF file that we will flash onto the chip. I sugges
 
 - =satoshinm= has [[https://satoshinm.github.io/blog/171212_stm32_blue_pill_arm_development_board_first_look_bare_metal_programming.html][a wonderful guide]] where he guides you through all the challenges he had setting up his bluepill. It's long but very informative and I recommend reading it. He also has an accompanying repository where we has code for the blinky working using bare metal, the STM HAL and another 3rd party library. His code (the bare metal part especially) was absolutely invaluable for getting my setup up and running. Check out [[https://github.com/satoshinm/pill_blink][his github]] project.
 * Anatomy of a build
+Unfortunately getting started and just getting a light blinking involved quite a lot of steps since we have no operating system to handle all the background stuff.
 ** The Linker Script
 When an application normally runs on a desktop machine it's generally running using virtual memory in a virtual application-specific address space. From the applications point of view it can manipulate it's own memory however it wants - and it's the operating system that then translates that into safe operations on the actually memory (for instance to insure that the applications doesn't touch any memory region it shouldn't)
 
-On a simple microcontroller there is no operating system to manage the memory, and the memory is shared with other functionality - some addresses are reserved for peripherals, other addresses are for interrupts and reset bits, the stack and heap are allocated some device-specific place and there is also a split between ROM and RAM. 
+On a microcontroller by default there is no operating system to manage the memory and the memory is shared with other functionality - some addresses are reserved for peripherals, other addresses are for interrupts and reset bits, the stack and heap are allocated some device-specific place and there is also a split between ROM and RAM. 
 
-Because of these new limitations we can't just start executing code at address zero  or drop in a ~main()~ functions somewhere randomly and start there, we need to tell the linker what the code layout is though a custom *linker script*. First we tell it which parts are ROM and RAM with their respective sizes. ROM (Read Only Memory) is where the code and constants live, and RAM (Random Access Memory) is where the stack and heap live - the stuff that's dynamic
+Because of these new limitations we can't just start executing code at address zero or drop in a ~main()~ functions somewhere randomly and start there, we need to tell the linker what the code layout is though a custom *linker script*. First we tell it which parts correspond to ROM and RAM and what will be their respective sizes. ROM (Read Only Memory) is where the code and constants live, and RAM (Random Access Memory) is where the stack and heap live - the stuff that's dynamic.
 
 #+BEGIN_SRC c :tangle STM32F103RBTx_FLASH.ld
 MEMORY
@@ -49,21 +50,15 @@ MEMORY
 PROVIDE(_stack = ORIGIN(ram) + LENGTH(ram));
 #+END_SRC
 
-Even give that, code on a microcontroller doesn't by default start at the first address of ROM and go from there (that's more or less how we conceptualize code running on an normal OS). A better way to think about the microcontroller is it's as a machine that recieves interrupt signals from external inputs and the chip responding by running code and then returning to whatever it was doing before. These interrupting inputs can be a clock running out, a peripheral wanting attention, an attached debugger wanting a halt, etc.
+Even give that, code on a microcontroller doesn't by default start at the first address of ROM and go from there. A better way to think about the microcontroller is it's as a machine that recieves interrupt signals from external inputs and the chip responding by running code and then returning to whatever it was doing before. These interrupting inputs can be a clock running out, a peripheral wanting attention, an attached debugger wanting the pause everything, etc.
 
-So instead of a ~main()~ or something, the first thing in ROM is a vector table - a table of pointers to the different *interrupt handlers* - ie. the code that is run when each interrupt happens. So we need to tell the linker that there will be a vector table
+So instead of a ~main()~ or something, the first thing in ROM is a /vector table/ - a table of pointers to the different *interrupt handlers*. These handlers are the code that is run when each interrupt happens. The first interrupt handler in this table will be special and it's the one that is triggered when the system is powered on, the user presses the reset button, or the code runs out of things to do. It's appropriately called the *reset handeler*
+
 #+BEGIN_SRC c :tangle STM32F103RBTx_FLASH.ld
 EXTERN(vector_table);
-#+END_SRC
-Here ~vector_table~ is  not a special keyword, it's just a label we are giving to the linker. It's written as =EXTERN=, meaning it has the label name now, but it'll look for its definition in our code, so we need to not forget to define this later on!
-
-The first interrupt handler in this table will be special and it's the one that is triggered when the system is powered on, the user presses the reset button, or the code runs out of things to do. It's appropriately called the *reset handeler*
-
-We also tell the linker that the code should start at the *reset handler*. Though as we'll see in the next section, this isn't stictly necessary because the reset handler is always the first interrupt handler in the vector table - so the microcontroller will know where to look for it by default.
-#+BEGIN_SRC c :tangle STM32F103RBTx_FLASH.ld
 ENTRY(reset_handler);
 #+END_SRC
-Again, this is just a symbol and the linker will look for its value in our code during linking.
+These two are just symbols for the linker - and it will look for them later in the actual code it's linking. So we need to not forget to define them :)
 
 Lastly we need to tell the linker that we want those vectors first in the ROM and aligned at the byte level (b/c the micro reads things in byte sized chucks - haha)
 #+BEGIN_SRC c :tangle STM32F103RBTx_FLASH.ld
@@ -81,11 +76,12 @@ So the chip doesn't need to hunt for the vector table. It's always in the same s
 
 ** The Startup File (WIP)
 
-The next part is to actually write the reset handler and to define the vector tables we just talked about and that the linker is expecting from us! The vector table will be set to some default values (and can be changed later) and we'll write the reset handler in a generic way that we can reuse between project. It will do some generic initializations and then at the end call to ~main()~. Then when we start a new project we can simply start writing a ~main()~ and skip all this initializations. In so doing we've split off these initializations into a separate *startup file* that we will reuse across projects.
+As I mentioned, the reset handler and vector table are just symbols to the linker at this point - so the next step is to write the code for them. The vector table will be set to some default values (and can be changed later) and we'll write the reset handler in a generic way that we can reuse between project. It will do some generic initializations and then at the end call to ~main()~. Then when we start a new project we can simply start writing a ~main()~ and skip all this initializations. In so doing we've split off these initializations into a separate *startup file* that we will reuse across projects.
 
 #+BEGIN_QUOTE
-*Note:* There is nothing special about this file for the compiler or linker - it's just another code file - and  you are free to copy it over to your other code files if you want!
+*Note:* There is nothing special about this file for the compiler or linker - it's just another code file - and  you are free to copy it over to your other code files if you want
 #+END_QUOTE
+
 #+BEGIN_SRC c :tangle startup_stm32f103xb.c
   int main(void);
   void __attribute__ ((weak, naked)) reset_handler(void) {
@@ -197,7 +193,8 @@ struct {
     }
 };
 #+END_SRC
-If you open up some startup files in templates provided by STM you will see that they're all written in assembly. The rational is that because the resulting code is always the same there no chance of the compiler doing something funny. However if you squint and look at the assembly you will see that the code is doing basically the same thing. It defined a reset handler which then calls a main.
+
+If you open up some startup files in templates provided by STM you will see that they're all written in assembly. The rational is that because the resulting code is always the same there no chance of the compiler doing something funny. However if you squint and look at the assembly you will see that the code is doing basically the same thing + some extra magic. But on a high level it's also defining a reset handler which then calls a main.
 
 Once we have the file we can add it to CMake
 #+BEGIN_SRC cmake :tangle CMakeLists.txt
@@ -205,21 +202,11 @@ Once we have the file we can add it to CMake
   set(STARTUP_FILE "startup_stm32f103xb.c")
 #+END_SRC
 #+BEGIN_QUOTE
-*TODO* Explain what's going on in more details
 *TODO* Maybe split all of this generic stuff into a separate repository that can be pulled in with CMake. If I write a ~configure_elf()~ cmake function that will do all this messy stuff, it'd keep the parent project =CMakeLists.txt= a lot cleaner. 
-#+END_QUOTE
-#+BEGIN_QUOTE
-  *            This module performs:
-  *                - Set the initial SP
-  *                - Set the initial PC == Reset_Handler,
-  *                - Set the vector table entries with the exceptions ISR address
-  *                - Configure the clock system   
-  *                - Branches to main in the C library (which eventually
-  *                  calls main()).
 #+END_QUOTE
 ** The STM Libraries
 
-Next we need actual libraries to write code with - otherwise we are kinda stuck writing assembly and poking at memory addresses with the datasheet. These are all provided in one bundle called *Cube* and it's on [[https://www.st.com/content/st_com/en/products/embedded-software/mcus-embedded-software/stm32-embedded-software/stm32cube-mcu-packages/stm32cubef1.html][the STM website]]. Here is a quick digest of what you get:
+Next we need actual libraries to write code with - otherwise we are kinda stuck poking at memory addresses with the datasheet. These are all provided in one bundle called *Cube* and it's on [[https://www.st.com/content/st_com/en/products/embedded-software/mcus-embedded-software/stm32-embedded-software/stm32cube-mcu-packages/stm32cubef1.html][the STM website]]. Here is a quick digest of what you get:
 
 - The *BSP* has board specific peripheral libraries.. since we aren't using a board from STM - this really doesn't concern us.
 
@@ -289,12 +276,15 @@ and then we link it to the library we are using
 #+BEGIN_SRC cmake :tangle CMakeLists.txt
   target_link_libraries(${ELF} ll )
 #+END_SRC
+And I'm also adding in a include directory for future use - but it's empty for now
+#+BEGIN_SRC cmake :tangle CMakeLists.txt
+  target_include_directories(${ELF} PUBLIC inc)
 #+END_SRC
 ** The toolchain
 
-Now that we have the code to start up the chip and the code to blink a light we just need to specify the compiler and flags we will run. I'm building using =gcc-arm-none-eabi= and its associated tools. I did this on a Debian system where this version of gcc can be installed from the repository (name =gcc-arm-none-eabi=)
+Now that we have all the pieces we just need to tell CMake how we want everything compiled. I'm building using =gcc-arm-none-eabi= and its associated tools. I did this on a Debian system where this version of gcc can be installed from the repository (name =gcc-arm-none-eabi=)
 
-Canonically this is done in a separate file so that you can subsitute other possible toolchains (like for instance LLVM or custom versions of GCC). We won't be doing that here, but for the sake of convention I've written these configurations to a =toolchain.cmake=
+Canonically the compiler is specified in a separate file so that you can subsitute other possible toolchains (like for instance LLVM or custom versions of GCC). I'll just setup GCC as an example and write it out to a =toolchain.cmake= file in the source directory
 
 #+BEGIN_SRC cmake :tangle toolchain.cmake
   set(CMAKE_SYSTEM_NAME Generic) # 'Generic' is used for embedded systems
@@ -328,11 +318,11 @@ Next we need to tell the linker what linker script to use (which is a bit ugly i
            -Wl,-Map=${PROJECT_NAME}.map")
 #+END_SRC
 
-I'm appending this to the =CMakeLists.txt=, but it's maybe something that should be in the toolchain file.
+I'm appending this to the =CMakeLists.txt=, but it's something that maybe could be in the toolchain file. However b/c it does need the target name (${ELF}) it's more convenient to just append it to the ~CMakeLists.txt~ (something to revisit in the future)
 
-I also added two more linker options (you can see it's a linker option b/c it starts with a =-Wl=)
+You'll also notice I added two more linker options (you can see it's a linker option b/c it starts with a =-Wl=)
 
-- =--gc-sections= this tells the linker to remove unused code/data from the final executable. There is a pesky ~_exit()~ function referrence that will often get slipped into your executable by the compiler. B/c we are running on a microcontroller the code never exits (it can't quit and hand off executation to an OS after all!) so this exit needs to be removed by the linker. Otherwise the linker will complain you never defined an exit function.
+- =--gc-sections= this tells the linker to remove unused code/data from the final executable. There is a pesky ~_exit()~ function referrence that will often get slipped into your executable by the compiler. B/c we are running on a microcontroller the code never really exits (it can't quit and hand off executation to an OS after all!) so this exit needs to be removed by the linker. If you leave this off then the linker will get confused and start complaining you never defined an exit function.
 
 - =-Map= prints a link map:
    + Where object files and symbols are mapped into memory.
@@ -342,7 +332,6 @@ I also added two more linker options (you can see it's a linker option b/c it st
 The link map is like a high-level overview of how your code looks like
 
 More linker options are explained in details here: https://ftp.gnu.org/old-gnu/Manuals/ld-2.9.1/html_node/ld_3.html
-
 
 We then also need to let the compiler know our target architecture and some compiler options (taken from [[https://github.com/PurpleAlien/stm32-minimal/blob/master/Makefile][PurpleAlien]])
 

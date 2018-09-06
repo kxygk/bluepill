@@ -4,7 +4,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
 <head>
 <title>Bluepill: a GCC/CMake build environment ..</title>
-<!-- 2018-09-04 Tue 18:29 -->
+<!-- 2018-09-06 Thu 19:42 -->
 <meta  http-equiv="Content-Type" content="text/html;charset=utf-8" />
 <meta  name="generator" content="Org-mode" />
 <meta  name="author" content="George Kontsevich" />
@@ -191,7 +191,7 @@ In this guide we will setup a simple minimal blinky for the Bluepill: A very che
 </div>
 
 <p>
-I will have two versions - one using the CMSIS and one using the LL (explained below). The embedded community seems a bit allergic to CMake - but I'm quite allergic to Make, so hopefully this guide will provide something new.
+I will be building a blinky using STM32's Low Level API (explained below). The embedded community seems a bit allergic to CMake - but I'm quite allergic to Make, so hopefully this guide will provide something new. At the end I will show how CMake allows us to plug in our project into basically any modern IDE - and we'll get the whole thing running just using GCC and OpenOCD
 </p>
 
 <p>
@@ -204,11 +204,16 @@ starting our CMake file we write out the usual
 <span style="color: #ef2929;">project</span>(blinky)
 </pre>
 </div>
-
 <p>
-The blessed way of building things for the STM32 series chips is using their wizards - but it's possible to get the whole thing running just using GCC and OpenOCD - and that's what we're gunna try to get working by the end of this guide. People have ofcourse already done this before:
+Our end goal is to create an ELF file that we will flash onto the chip. I suggest adding the <code>.elf</code> extension explicitly to your target name. To keep the template generic enough I just name the elf the same as the project name. So if you fork this project and do your own thing - you can just change the project name and you'll be good to go
 </p>
+<div class="org-src-container">
+
+<pre class="src src-cmake"><span style="color: #ef2929;">set</span>(ELF ${<span style="color: #ff8700;">PROJECT_NAME</span>}.elf)
+</pre>
 </div>
+</div>
+
 
 <div id="outline-container-sec-1-1" class="outline-3">
 <h3 id="sec-1-1">Prior Art</h3>
@@ -229,7 +234,11 @@ The blessed way of building things for the STM32 series chips is using their wiz
 <div id="outline-container-sec-2" class="outline-2">
 <h2 id="sec-2">Anatomy of a build</h2>
 <div class="outline-text-2" id="text-2">
-</div><div id="outline-container-sec-2-1" class="outline-3">
+<p>
+Unfortunately getting started and just getting a light blinking involved quite a lot of steps since we have no operating system to handle all the background stuff.
+</p>
+</div>
+<div id="outline-container-sec-2-1" class="outline-3">
 <h3 id="sec-2-1">The Linker Script</h3>
 <div class="outline-text-3" id="text-2-1">
 <p>
@@ -237,11 +246,11 @@ When an application normally runs on a desktop machine it's generally running us
 </p>
 
 <p>
-On a simple microcontroller there is no operating system to manage the memory, and the memory is shared with other functionality - some addresses are reserved for peripherals, other addresses are for interrupts and reset bits, the stack and heap are allocated some device-specific place and there is also a split between ROM and RAM. 
+On a microcontroller by default there is no operating system to manage the memory and the memory is shared with other functionality - some addresses are reserved for peripherals, other addresses are for interrupts and reset bits, the stack and heap are allocated some device-specific place and there is also a split between ROM and RAM. 
 </p>
 
 <p>
-Because of these new limitations we can't just start executing code at address zero  or drop in a <code>main()</code> functions somewhere randomly and start there, we need to tell the linker what the code layout is though a custom <b>linker script</b>. First we tell it which parts are ROM and RAM with their respective sizes. ROM (Read Only Memory) is where the code and constants live, and RAM (Random Access Memory) is where the stack and heap live - the stuff that's dynamic
+Because of these new limitations we can't just start executing code at address zero or drop in a <code>main()</code> functions somewhere randomly and start there, we need to tell the linker what the code layout is though a custom <b>linker script</b>. First we tell it which parts correspond to ROM and RAM and what will be their respective sizes. ROM (Read Only Memory) is where the code and constants live, and RAM (Random Access Memory) is where the stack and heap live - the stuff that's dynamic.
 </p>
 
 <div class="org-src-container">
@@ -256,35 +265,21 @@ PROVIDE(_stack = ORIGIN(ram) + LENGTH(ram));
 </div>
 
 <p>
-Even give that, code on a microcontroller doesn't by default start at the first address of ROM and go from there (that's more or less how we conceptualize code running on an normal OS). A better way to think about the microcontroller is it's as a machine that recieves interrupt signals from external inputs and the chip responding by running code and then returning to whatever it was doing before. These interrupting inputs can be a clock running out, a peripheral wanting attention, an attached debugger wanting a halt, etc.
+Even give that, code on a microcontroller doesn't by default start at the first address of ROM and go from there. A better way to think about the microcontroller is it's as a machine that recieves interrupt signals from external inputs and the chip responding by running code and then returning to whatever it was doing before. These interrupting inputs can be a clock running out, a peripheral wanting attention, an attached debugger wanting the pause everything, etc.
 </p>
 
 <p>
-So instead of a <code>main()</code> or something, the first thing in ROM is a vector table - a table of pointers to the different <b>interrupt handlers</b> - ie. the code that is run when each interrupt happens. So we need to tell the linker that there will be a vector table
+So instead of a <code>main()</code> or something, the first thing in ROM is a <i>vector table</i> - a table of pointers to the different <b>interrupt handlers</b>. These handlers are the code that is run when each interrupt happens. The first interrupt handler in this table will be special and it's the one that is triggered when the system is powered on, the user presses the reset button, or the code runs out of things to do. It's appropriately called the <b>reset handeler</b>
 </p>
+
 <div class="org-src-container">
 
 <pre class="src src-c">EXTERN(vector_table);
+ENTRY(reset_handler);
 </pre>
 </div>
 <p>
-Here <code>vector_table</code> is  not a special keyword, it's just a label we are giving to the linker. It's written as <code>EXTERN</code>, meaning it has the label name now, but it'll look for its definition in our code, so we need to not forget to define this later on!
-</p>
-
-<p>
-The first interrupt handler in this table will be special and it's the one that is triggered when the system is powered on, the user presses the reset button, or the code runs out of things to do. It's appropriately called the <b>reset handeler</b>
-</p>
-
-<p>
-We also tell the linker that the code should start at the <b>reset handler</b>. Though as we'll see in the next section, this isn't stictly necessary because the reset handler is always the first interrupt handler in the vector table - so the microcontroller will know where to look for it by default.
-</p>
-<div class="org-src-container">
-
-<pre class="src src-c">ENTRY(reset_handler);
-</pre>
-</div>
-<p>
-Again, this is just a symbol and the linker will look for its value in our code during linking.
+These two are just symbols for the linker - and it will look for them later in the actual code it's linking. So we need to not forget to define them :)
 </p>
 
 <p>
@@ -312,14 +307,15 @@ So the chip doesn't need to hunt for the vector table. It's always in the same s
 <h3 id="sec-2-2">The Startup File (WIP)</h3>
 <div class="outline-text-3" id="text-2-2">
 <p>
-The next part is to actually write the reset handler and to define the vector tables we just talked about and that the linker is expecting from us! The vector table will be set to some default values (and can be changed later) and we'll write the reset handler in a generic way that we can reuse between project. It will do some generic initializations and then at the end call to <code>main()</code>. Then when we start a new project we can simply start writing a <code>main()</code> and skip all this initializations. In so doing we've split off these initializations into a separate <b>startup file</b> that we will reuse across projects.
+As I mentioned, the reset handler and vector table are just symbols to the linker at this point - so the next step is to write the code for them. The vector table will be set to some default values (and can be changed later) and we'll write the reset handler in a generic way that we can reuse between project. It will do some generic initializations and then at the end call to <code>main()</code>. Then when we start a new project we can simply start writing a <code>main()</code> and skip all this initializations. In so doing we've split off these initializations into a separate <b>startup file</b> that we will reuse across projects.
 </p>
 
 <blockquote>
 <p>
-<b>Note:</b> There is nothing special about this file for the compiler or linker - it's just another code file - and  you are free to copy it over to your other code files if you want!
+<b>Note:</b> There is nothing special about this file for the compiler or linker - it's just another code file - and  you are free to copy it over to your other code files if you want
 </p>
 </blockquote>
+
 <div class="org-src-container">
 
 <pre class="src src-c">  <span style="color: #18b2b2;">int</span> <span style="color: #ef2929;">main</span>(<span style="color: #18b2b2;">void</span>);
@@ -433,8 +429,9 @@ The next part is to actually write the reset handler and to define the vector ta
 };
 </pre>
 </div>
+
 <p>
-If you open up some startup files in templates provided by STM you will see that they're all written in assembly. The rational is that because the resulting code is always the same there no chance of the compiler doing something funny. However if you squint and look at the assembly you will see that the code is doing basically the same thing. It defined a reset handler which then calls a main.
+If you open up some startup files in templates provided by STM you will see that they're all written in assembly. The rational is that because the resulting code is always the same there no chance of the compiler doing something funny. However if you squint and look at the assembly you will see that the code is doing basically the same thing + some extra magic. But on a high level it's also defining a reset handler which then calls a main.
 </p>
 
 <p>
@@ -448,27 +445,8 @@ Once we have the file we can add it to CMake
 </div>
 <blockquote>
 <p>
-<b>TODO</b> Explain what's going on in more details
 <b>TODO</b> Maybe split all of this generic stuff into a separate repository that can be pulled in with CMake. If I write a <code>configure_elf()</code> cmake function that will do all this messy stuff, it'd keep the parent project <code>CMakeLists.txt</code> a lot cleaner. 
 </p>
-</blockquote>
-<blockquote>
-<ul class="org-ul">
-<li>This module performs:
-</li>
-<li>- Set the initial SP
-</li>
-<li>- Set the initial PC == Reset<sub>Handler</sub>,
-</li>
-<li>- Set the vector table entries with the exceptions ISR address
-</li>
-<li>- Configure the clock system   
-</li>
-<li>- Branches to main in the C library (which eventually
-</li>
-<li>calls main()).
-</li>
-</ul>
 </blockquote>
 </div>
 </div>
@@ -476,7 +454,7 @@ Once we have the file we can add it to CMake
 <h3 id="sec-2-3">The STM Libraries</h3>
 <div class="outline-text-3" id="text-2-3">
 <p>
-Next we need actual libraries to write code with - otherwise we are kinda stuck writing assembly and poking at memory addresses with the datasheet. These are all provided in one bundle called <b>Cube</b> and it's on <a href="https://www.st.com/content/st_com/en/products/embedded-software/mcus-embedded-software/stm32-embedded-software/stm32cube-mcu-packages/stm32cubef1.html">the STM website</a>. Here is a quick digest of what you get:
+Next we need actual libraries to write code with - otherwise we are kinda stuck poking at memory addresses with the datasheet. These are all provided in one bundle called <b>Cube</b> and it's on <a href="https://www.st.com/content/st_com/en/products/embedded-software/mcus-embedded-software/stm32-embedded-software/stm32cube-mcu-packages/stm32cubef1.html">the STM website</a>. Here is a quick digest of what you get:
 </p>
 
 <ul class="org-ul">
@@ -519,43 +497,89 @@ The library bundle has been added as a submodule to this project, but if you for
 <h3 id="sec-2-4">Our blinky code (WIP)</h3>
 <div class="outline-text-3" id="text-2-4">
 <p>
-Next we can write a little program to blink a light and put it into <code>/src/main.c</code>
+Now that we have a linker that can put the code in the right places, and the startup code to initialize things correctly for us we can finally write our blinky code in <code>/src/main.c</code>
 </p>
 
 <p>
-TODO: Write my own :)
-Ripped directly from <a href="https://github.com/satoshinm/pill_blink/blob/master/bare-metal/pill_blink.c">https://github.com/satoshinm/pill_blink/blob/master/bare-metal/pill_blink.c</a> for now&#x2026;
+The libraries in the LL-API are incredibly fragmented. So while we want to use the GPIO, we also need a few other libraries to get started. The GPIO peripheral for starters need to be powered on by the microcontroller (all the peripherals are powered off by default). The system responsible for that is called Reset and Clock Control, RCC for short. There is another module called BUS which has helper function to turn on/off RCC sections.
 </p>
 
+<p>
+So first we include all three of these modules
+</p>
 <div class="org-src-container">
 
-<pre class="src src-c"><span style="color: #18b2b2;">int</span> <span style="color: #ef2929;">main</span>(<span style="color: #18b2b2;">void</span>){
-    <span style="color: #00af00;">while</span>(1) {
-        (*(<span style="color: #00af00;">volatile</span> <span style="color: #18b2b2;">unsigned</span> <span style="color: #18b2b2;">int</span> *)(0x40011010)) = (1 &lt;&lt; 13);
-        <span style="color: #00af00;">for</span> (<span style="color: #18b2b2;">int</span> <span style="color: #ff8700;">i</span> = 0; i &lt; 1000000; ++i) <span style="color: #00af00;">__asm__</span>(<span style="color: #ff1f8b;">"nop"</span>);
+<pre class="src src-c"><span style="color: #b218b2;">#include</span> <span style="color: #ff1f8b;">"stm32f1xx_ll_bus.h"</span>
+<span style="color: #b218b2;">#include</span> <span style="color: #ff1f8b;">"stm32f1xx_ll_rcc.h"</span>
+<span style="color: #b218b2;">#include</span> <span style="color: #ff1f8b;">"stm32f1xx_ll_gpio.h"</span>
+</pre>
+</div>
+<p>
+Then we can start writing our <code>main()</code>
+</p>
+<div class="org-src-container">
 
-        (*(<span style="color: #00af00;">volatile</span> <span style="color: #18b2b2;">unsigned</span> <span style="color: #18b2b2;">short</span> *)(0x40011014)) = (1 &lt;&lt; 13);
-        <span style="color: #00af00;">for</span> (<span style="color: #18b2b2;">int</span> <span style="color: #ff8700;">i</span> = 0; i &lt; 500000; ++i) <span style="color: #00af00;">__asm__</span>(<span style="color: #ff1f8b;">"nop"</span>);
+<pre class="src src-c"><span style="color: #18b2b2;">int</span> <span style="color: #ef2929;">main</span>(<span style="color: #18b2b2;">void</span>)
+{
+</pre>
+</div>
+<p>
+We use the BUS module macro to enable the GPIO peripheral. The LED we want to blink on the board is labeled <b>PC13</b>. PC stands for PortC and it's number 13. So we enable GPIO port C. The peripherals controlled by the RCC system are split into two sections APB1 and APB2. GPIO is on the APB2 section.
+</p>
+<div class="org-src-container">
+
+<pre class="src src-c">LL_APB2_GRP1_EnableClock(LL_APB2_GRP1_PERIPH_GPIOC);
+</pre>
+</div>
+<p>
+We then set this GPIO pin to be an ouput pin and he set it to be a high speed pin
+</p>
+<div class="org-src-container">
+
+<pre class="src src-c">LL_GPIO_SetPinMode(GPIOC, LL_GPIO_PIN_13, LL_GPIO_MODE_OUTPUT);
+LL_GPIO_SetPinSpeed(GPIOC, LL_GPIO_PIN_13, LL_GPIO_SPEED_FREQ_HIGH);
+</pre>
+</div>
+<p>
+Now that we have the GPIO pin setup we just loop toggling the pin (with a long loop of doing nothing) to create a artificial pause
+</p>
+<div class="org-src-container">
+
+<pre class="src src-c">  <span style="color: #00af00;">while</span> (1)
+  {
+    LL_GPIO_TogglePin(GPIOC, LL_GPIO_PIN_13);
+    <span style="color: #18b2b2;">int</span> <span style="color: #ff8700;">i</span> = 200000;<span style="color: #b2b2b2; font-style: italic;">/* </span><span style="color: #b2b2b2; font-style: italic;">About 1/4 second delay </span><span style="color: #b2b2b2; font-style: italic;">*/</span>
+    <span style="color: #00af00;">while</span> (i-- &gt; 0) {
+        <span style="color: #00af00;">asm</span>(<span style="color: #ff1f8b;">"nop"</span>);<span style="color: #b2b2b2; font-style: italic;">/* </span><span style="color: #b2b2b2; font-style: italic;">This stops it optimising code out </span><span style="color: #b2b2b2; font-style: italic;">*/</span>
     }
+  }
 }
 </pre>
 </div>
 <p>
-Once there we can just add it as a special executable into our cmake
+And that's it! We can declare our target elf file and link up our <code>main.c</code> with the startup file everything in CMake now.
 </p>
 <div class="org-src-container">
 
-<pre class="src src-cmake"><span style="color: #ef2929;">add_executable</span>(${<span style="color: #ff8700;">PROJECT_NAME</span>}.elf ${<span style="color: #ff8700;">STARTUP_FILE</span>}
+<pre class="src src-cmake"><span style="color: #ef2929;">add_executable</span>(${<span style="color: #ff8700;">ELF</span>} ${<span style="color: #ff8700;">STARTUP_FILE</span>}
   src/main.c)
-<span style="color: #ef2929;">target_include_directories</span>(${<span style="color: #ff8700;">PROJECT_NAME</span>}.elf PUBLIC inc)
+<span style="color: #ef2929;">target_include_directories</span>(${<span style="color: #ff8700;">ELF</span>} PUBLIC inc)
 </pre>
 </div>
 <p>
-and then link it to our library
+and then we link it to the library we are using
 </p>
 <div class="org-src-container">
 
-<pre class="src src-cmake"><span style="color: #ef2929;">target_link_libraries</span>(${<span style="color: #ff8700;">PROJECT_NAME</span>}.elf ll )
+<pre class="src src-cmake"><span style="color: #ef2929;">target_link_libraries</span>(${<span style="color: #ff8700;">ELF</span>} ll )
+</pre>
+</div>
+<p>
+And I'm also adding in a include directory for future use - but it's empty for now
+</p>
+<div class="org-src-container">
+
+<pre class="src src-cmake"><span style="color: #ef2929;">target_include_directories</span>(${<span style="color: #ff8700;">ELF</span>} PUBLIC inc)
 </pre>
 </div>
 </div>
@@ -564,11 +588,11 @@ and then link it to our library
 <h3 id="sec-2-5">The toolchain</h3>
 <div class="outline-text-3" id="text-2-5">
 <p>
-Now that we have the code to start up the chip and the code to blink a light we just need to specify the compiler and flags we will run. I'm building using <code>gcc-arm-none-eabi</code> and its associated tools. I did this on a Debian system where this version of gcc can be installed from the repository (name <code>gcc-arm-none-eabi</code>)
+Now that we have all the pieces we just need to tell CMake how we want everything compiled. I'm building using <code>gcc-arm-none-eabi</code> and its associated tools. I did this on a Debian system where this version of gcc can be installed from the repository (name <code>gcc-arm-none-eabi</code>)
 </p>
 
 <p>
-Canonically this is done in a separate file so that you can subsitute other possible toolchains (like for instance LLVM or custom versions of GCC). We won't be doing that here, but for the sake of convention I've written these configurations to a <code>toolchain.cmake</code>
+Canonically the compiler is specified in a separate file so that you can subsitute other possible toolchains (like for instance LLVM or custom versions of GCC). I'll just setup GCC as an example and write it out to a <code>toolchain.cmake</code> file in the source directory
 </p>
 
 <div class="org-src-container">
@@ -602,7 +626,7 @@ Next we need to tell the linker what linker script to use (which is a bit ugly i
 <div class="org-src-container">
 
 <pre class="src src-cmake"><span style="color: #ef2929;">set_target_properties</span>(
-  ${<span style="color: #ff8700;">PROJECT_NAME</span>}.elf
+  ${<span style="color: #ff8700;">ELF</span>}
   PROPERTIES
   LINK_FLAGS
   <span style="color: #ff1f8b;">"-T${</span><span style="color: #ff8700;">PROJECT_SOURCE_DIR</span><span style="color: #ff1f8b;">}/STM32F103RBTx_FLASH.ld \</span>
@@ -612,15 +636,15 @@ Next we need to tell the linker what linker script to use (which is a bit ugly i
 </div>
 
 <p>
-I'm appending this to the <code>CMakeLists.txt</code>, but it's maybe something that should be in the toolchain file.
+I'm appending this to the <code>CMakeLists.txt</code>, but it's something that maybe could be in the toolchain file. However b/c it does need the target name (${ELF}) it's more convenient to just append it to the <code>CMakeLists.txt</code> (something to revisit in the future)
 </p>
 
 <p>
-I also added two more linker options (you can see it's a linker option b/c it starts with a <code>-Wl</code>)
+You'll also notice I added two more linker options (you can see it's a linker option b/c it starts with a <code>-Wl</code>)
 </p>
 
 <ul class="org-ul">
-<li><code>--gc-sections</code> this tells the linker to remove unused code/data from the final executable. There is a pesky <code>_exit()</code> function referrence that will often get slipped into your executable by the compiler. B/c we are running on a microcontroller the code never exits (it can't quit and hand off executation to an OS after all!) so this exit needs to be removed by the linker. Otherwise the linker will complain you never defined an exit function.
+<li><code>--gc-sections</code> this tells the linker to remove unused code/data from the final executable. There is a pesky <code>_exit()</code> function referrence that will often get slipped into your executable by the compiler. B/c we are running on a microcontroller the code never really exits (it can't quit and hand off executation to an OS after all!) so this exit needs to be removed by the linker. If you leave this off then the linker will get confused and start complaining you never defined an exit function.
 </li>
 
 <li><code>-Map</code> prints a link map:
@@ -643,14 +667,13 @@ The link map is like a high-level overview of how your code looks like
 More linker options are explained in details here: <a href="https://ftp.gnu.org/old-gnu/Manuals/ld-2.9.1/html_node/ld_3.html">https://ftp.gnu.org/old-gnu/Manuals/ld-2.9.1/html_node/ld_3.html</a>
 </p>
 
-
 <p>
 We then also need to let the compiler know our target architecture and some compiler options (taken from <a href="https://github.com/PurpleAlien/stm32-minimal/blob/master/Makefile">PurpleAlien</a>)
 </p>
 
 <div class="org-src-container">
 
-<pre class="src src-cmake"><span style="color: #ef2929;">target_compile_options</span>(${<span style="color: #ff8700;">PROJECT_NAME</span>}.elf PUBLIC
+<pre class="src src-cmake"><span style="color: #ef2929;">target_compile_options</span>(${<span style="color: #ff8700;">ELF</span>} PUBLIC
   -Wall 
   -g 
   -std=gnu99 
@@ -959,7 +982,7 @@ Transfer rate: 10 KB/sec, 447 bytes/write.
 </div>
 <div id="postamble" class="status">
 <p class="author">Author: George Kontsevich</p>
-<p class="date">Created: 2018-09-04 Tue 18:29</p>
+<p class="date">Created: 2018-09-06 Thu 19:42</p>
 <p class="creator"><a href="http://www.gnu.org/software/emacs/">Emacs</a> 25.2.2 (<a href="http://orgmode.org">Org</a> mode 8.2.10)</p>
 <p class="validation"><a href="http://validator.w3.org/check?uri=referer">Validate</a></p>
 </div>
