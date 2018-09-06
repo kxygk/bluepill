@@ -2,26 +2,30 @@
 cmake_minimum_required(VERSION 3.0)
 project(blinky)
 
+set(ELF ${PROJECT_NAME}.elf)
+
 enable_language(ASM)
 set(STARTUP_FILE "startup_stm32f103xb.c")
 
 add_subdirectory(stm32f1-ll)
 
-add_executable(${PROJECT_NAME}.elf ${STARTUP_FILE}
+add_executable(${ELF} ${STARTUP_FILE}
   src/main.c)
-target_include_directories(${PROJECT_NAME}.elf PUBLIC inc)
+target_include_directories(${ELF} PUBLIC inc)
 
-target_link_libraries(${PROJECT_NAME}.elf ll )
+target_link_libraries(${ELF} ll )
+
+target_include_directories(${ELF} PUBLIC inc)
 
 set_target_properties(
-  ${PROJECT_NAME}.elf
+  ${ELF}
   PROPERTIES
   LINK_FLAGS
   "-T${PROJECT_SOURCE_DIR}/STM32F103RBTx_FLASH.ld \
    -Wl,--gc-sections \
    -Wl,-Map=${PROJECT_NAME}.map")
 
-target_compile_options(${PROJECT_NAME}.elf PUBLIC
+target_compile_options(${ELF} PUBLIC
   -Wall 
   -g 
   -std=gnu99 

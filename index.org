@@ -11,7 +11,7 @@ In this guide we will setup a simple minimal blinky for the Bluepill: A very che
 
 [[file:bluepill.jpeg]]
 
-I will have two versions - one using the CMSIS and one using the LL (explained below). The embedded community seems a bit allergic to CMake - but I'm quite allergic to Make, so hopefully this guide will provide something new.
+I will be building a blinky using STM32's Low Level API (explained below). The embedded community seems a bit allergic to CMake - but I'm quite allergic to Make, so hopefully this guide will provide something new. At the end I will show how CMake allows us to plug in our project into basically any modern IDE - and we'll get the whole thing running just using GCC and OpenOCD
 
 starting our CMake file we write out the usual
 
@@ -19,8 +19,11 @@ starting our CMake file we write out the usual
   cmake_minimum_required(VERSION 3.0)
   project(blinky)
 #+END_SRC
+Our end goal is to create an ELF file that we will flash onto the chip. I suggest adding the =.elf= extension explicitly to your target name. To keep the template generic enough I just name the elf the same as the project name. So if you fork this project and do your own thing - you can just change the project name and you'll be good to go
+#+BEGIN_SRC cmake :tangle CMakeLists.txt
+  set(ELF ${PROJECT_NAME}.elf)
+#+END_SRC
 
-The blessed way of building things for the STM32 series chips is using their wizards - but it's possible to get the whole thing running just using GCC and OpenOCD - and that's what we're gunna try to get working by the end of this guide. People have ofcourse already done this before:
 
 ** Prior Art
 
@@ -258,13 +261,14 @@ Ripped directly from https://github.com/satoshinm/pill_blink/blob/master/bare-me
 #+END_SRC
 Once there we can just add it as a special executable into our cmake
 #+BEGIN_SRC cmake :tangle CMakeLists.txt
-  add_executable(${PROJECT_NAME}.elf ${STARTUP_FILE}
+  add_executable(${ELF} ${STARTUP_FILE}
     src/main.c)
-  target_include_directories(${PROJECT_NAME}.elf PUBLIC inc)
+  target_include_directories(${ELF} PUBLIC inc)
 #+END_SRC
-and then link it to our library
+and then we link it to the library we are using
 #+BEGIN_SRC cmake :tangle CMakeLists.txt
-  target_link_libraries(${PROJECT_NAME}.elf ll )
+  target_link_libraries(${ELF} ll )
+#+END_SRC
 #+END_SRC
 ** The toolchain
 
@@ -296,7 +300,7 @@ Next we need to tell the linker what linker script to use (which is a bit ugly i
 
 #+BEGIN_SRC cmake :tangle CMakeLists.txt
         set_target_properties(
-          ${PROJECT_NAME}.elf
+          ${ELF}
           PROPERTIES
           LINK_FLAGS
           "-T${PROJECT_SOURCE_DIR}/STM32F103RBTx_FLASH.ld \
@@ -323,7 +327,7 @@ More linker options are explained in details here: https://ftp.gnu.org/old-gnu/M
 We then also need to let the compiler know our target architecture and some compiler options (taken from [[https://github.com/PurpleAlien/stm32-minimal/blob/master/Makefile][PurpleAlien]])
 
 #+BEGIN_SRC cmake :tangle CMakeLists.txt
-  target_compile_options(${PROJECT_NAME}.elf PUBLIC
+  target_compile_options(${ELF} PUBLIC
     -Wall 
     -g 
     -std=gnu99 
