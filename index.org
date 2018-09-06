@@ -243,23 +243,43 @@ add_subdirectory(stm32f1-ll)
   
 ** Our blinky code (WIP)
 
-Next we can write a little program to blink a light and put it into =/src/main.c=
+Now that we have a linker that can put the code in the right places, and the startup code to initialize things correctly for us we can finally write our blinky code in =/src/main.c=
 
-TODO: Write my own :)
-Ripped directly from https://github.com/satoshinm/pill_blink/blob/master/bare-metal/pill_blink.c for now...
+The libraries in the LL-API are incredibly fragmented. So while we want to use the GPIO, we also need a few other libraries to get started. The GPIO peripheral for starters need to be powered on by the microcontroller (all the peripherals are powered off by default). The system responsible for that is called Reset and Clock Control, RCC for short. There is another module called BUS which has helper function to turn on/off RCC sections.
 
+So first we include all three of these modules
 #+BEGIN_SRC c :tangle src/main.c
-  int main(void){
-      while(1) {
-          (*(volatile unsigned int *)(0x40011010)) = (1 << 13);
-          for (int i = 0; i < 1000000; ++i) __asm__("nop");
-
-          (*(volatile unsigned short *)(0x40011014)) = (1 << 13);
-          for (int i = 0; i < 500000; ++i) __asm__("nop");
+#include "stm32f1xx_ll_bus.h"
+#include "stm32f1xx_ll_rcc.h"
+#include "stm32f1xx_ll_gpio.h"
+#+END_SRC
+Then we can start writing our =main()=
+#+BEGIN_SRC c :tangle src/main.c
+  int main(void)
+  {
+#+END_SRC
+We use the BUS module macro to enable the GPIO peripheral. The LED we want to blink on the board is labeled *PC13*. PC stands for PortC and it's number 13. So we enable GPIO port C. The peripherals controlled by the RCC system are split into two sections APB1 and APB2. GPIO is on the APB2 section.
+#+BEGIN_SRC c :tangle src/main.c
+    LL_APB2_GRP1_EnableClock(LL_APB2_GRP1_PERIPH_GPIOC);
+#+END_SRC
+We then set this GPIO pin to be an ouput pin and he set it to be a high speed pin
+#+BEGIN_SRC c :tangle src/main.c
+    LL_GPIO_SetPinMode(GPIOC, LL_GPIO_PIN_13, LL_GPIO_MODE_OUTPUT);
+    LL_GPIO_SetPinSpeed(GPIOC, LL_GPIO_PIN_13, LL_GPIO_SPEED_FREQ_HIGH);
+#+END_SRC
+Now that we have the GPIO pin setup we just loop toggling the pin (with a long loop of doing nothing) to create a artificial pause
+#+BEGIN_SRC c :tangle src/main.c
+    while (1)
+    {
+      LL_GPIO_TogglePin(GPIOC, LL_GPIO_PIN_13);
+      int i = 200000;/* About 1/4 second delay */
+      while (i-- > 0) {
+          asm("nop");/* This stops it optimising code out */
       }
+    }
   }
 #+END_SRC
-Once there we can just add it as a special executable into our cmake
+And that's it! We can declare our target elf file and link up our =main.c= with the startup file everything in CMake now.
 #+BEGIN_SRC cmake :tangle CMakeLists.txt
   add_executable(${ELF} ${STARTUP_FILE}
     src/main.c)
