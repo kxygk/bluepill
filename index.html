@@ -4,7 +4,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
 <head>
 <title>Bluepill: a GCC/CMake build environment ..</title>
-<!-- 2018-09-07 Fri 17:59 -->
+<!-- 2018-09-07 Fri 18:32 -->
 <meta  http-equiv="Content-Type" content="text/html;charset=utf-8" />
 <meta  name="generator" content="Org-mode" />
 <meta  name="author" content="George Kontsevich" />
@@ -250,7 +250,11 @@ Unfortunately getting started and just getting a light blinking involved quite a
 <h3 id="sec-2-1">CMake</h3>
 <div class="outline-text-3" id="text-2-1">
 <p>
-CMake will be our central tool for coordinating the build and we will define all of it in a <code>CMakeLists.txt</code> file in our project root. Starting our CMake file we write out the usual CMake version and project name
+CMake is meta build automation tool. You define your project targets, how you want things linked and built and then it will generate build tools for you. Typically we just generate Make files but it can also coordinate system installation, generate installer wizards for Windows, generate Visual Studio project files and more. CMake has in effect standardized builds into a common set of easy to use terms - so while it's not as flexible as Make and you have to follow a certain layout/pattern, in the end everything ends up cleaner and more reusable and it's hard to shoot yourself in the foot. For us it will be our central tool for coordinating the build and we will define our whole project through a <code>CMakeLists.txt</code> file in our project root. We will see later that actually CMake will give us crucial project meta-information that Clang-tools and IDEs like CLion and KDevelop can hook into it to provide code highlighting/completion and other goodies. All of this is a serious quality-of-life improvement over vanilla Make. Because CMake has become the defacto standard in the C++ world the ecosystem of tools around it just keeps growing year to year.
+</p>
+
+<p>
+Starting our <code>CMakeLists.txt</code> we write out the usual CMake version and project name
 </p>
 
 <div class="org-src-container">
@@ -1028,7 +1032,7 @@ Once opened in Emacs:<br  />
 </div>
 <div id="postamble" class="status">
 <p class="author">Author: George Kontsevich</p>
-<p class="date">Created: 2018-09-07 Fri 17:59</p>
+<p class="date">Created: 2018-09-07 Fri 18:32</p>
 <p class="creator"><a href="http://www.gnu.org/software/emacs/">Emacs</a> 25.2.2 (<a href="http://orgmode.org">Org</a> mode 8.2.10)</p>
 <p class="validation"><a href="http://validator.w3.org/check?uri=referer">Validate</a></p>
 </div>
