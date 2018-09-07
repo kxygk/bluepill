@@ -4,7 +4,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
 <head>
 <title>Bluepill: a GCC/CMake build environment ..</title>
-<!-- 2018-09-06 Thu 23:57 -->
+<!-- 2018-09-07 Fri 17:59 -->
 <meta  http-equiv="Content-Type" content="text/html;charset=utf-8" />
 <meta  name="generator" content="Org-mode" />
 <meta  name="author" content="George Kontsevich" />
@@ -274,15 +274,15 @@ Our end goal is to create an ELF file that we will flash onto the chip. I sugges
 <h3 id="sec-2-2">The Linker Script</h3>
 <div class="outline-text-3" id="text-2-2">
 <p>
-When an application normally runs on a desktop machine it's generally running using virtual memory in a virtual application-specific address space. From the applications point of view it can manipulate its own memory however it wants - and it's the operating system that then translates that into safe operations on the actually memory (for instance to insure that the applications doesn't touch any memory region it shouldn't)
+When an application normally runs on a desktop machine it's generally running using virtual memory in a virtual application-specific address space. From the applications point of view it can manipulate its own memory however it wants - and it's the operating system that then translates that into safe operations on the actual memory (for instance to insure that the applications don't touch any memory region they shouldn't)
 </p>
 
 <p>
-On a microcontroller by default there is no operating system to manage the memory and the memory is shared with other functionality - some addresses are reserved for peripherals, other addresses are for interrupts and reset bits, the stack and heap are allocated some device-specific place and there is also a split between ROM and RAM. 
+On a microcontroller by default there is no operating system to manage the memory and the memory is shared with other functionality - some addresses are reserved for peripherals, other addresses are for interrupts and reset bits, the stack and heap are allocated in some device-specific place and there is also a split between ROM and RAM. 
 </p>
 
 <p>
-Because of these new limitations we can't just start executing code at address zero or drop in a <code>main()</code> functions somewhere randomly and start there, we need to tell the linker what the code layout is though a custom <b>linker script</b>. First we tell it which parts correspond to ROM and RAM and what will be their respective sizes. ROM (Read Only Memory) is where the code and constants live, and RAM (Random Access Memory) is where the stack and heap live - the stuff that's dynamic.
+Because of these new limitations we can't just start executing code at address zero or drop in a <code>main()</code> function somewhere randomly and start there, we need to tell the linker what the code layout is though a custom <b>linker script</b>. First we tell it which parts correspond to ROM and RAM and what will be their respective sizes. ROM (Read Only Memory) is where the code and constants live, and RAM (Random Access Memory) is where the stack and heap live - the stuff that's dynamic.
 </p>
 
 <div class="org-src-container">
@@ -297,7 +297,7 @@ PROVIDE(_stack = ORIGIN(ram) + LENGTH(ram));
 </div>
 
 <p>
-Even give that, code on a microcontroller doesn't by default start at the first address of ROM and go from there. On a desktop program you generally have an entry point (a <code>main()</code>) and an exit point (ex: <code>exit 0</code>). But a better way to think about the way a microcontroller works is it's as a machine that recieves interrupt signals from external inputs and the chip responding by running code and then returning to whatever it was doing before. These interrupting inputs can be a clock running out, a peripheral wanting attention, an attached debugger wanting the pause everything, etc. There is no real starting point nor an "exit"
+Even give that, code on a microcontroller doesn't by default start at the first address of ROM and go from there. On a desktop program you generally have an entry point (a <code>main()</code>) and an exit point (ex: <code>exit 0</code>). But a better way to think about the way a microcontroller works is it's as a machine that recieves interrupt signals from external inputs and the chip responds by running code and then returns to whatever it was doing before. These interrupting inputs can be a clock running out, a peripheral wanting attention, an attached debugger wanting to pause everything, etc. There is no real starting point nor an "exit"
 </p>
 
 <p>
@@ -339,7 +339,7 @@ So the chip doesn't need to hunt for the vector table. It's always in the same s
 <h3 id="sec-2-3">The Startup File (WIP)</h3>
 <div class="outline-text-3" id="text-2-3">
 <p>
-As I mentioned, the reset handler and vector table are just symbols to the linker at this point - so the next step is to write the code for them. The vector table will be set to some default values (and can be changed later) and we'll write the reset handler in a generic way that we can reuse between projects. It will do some initializations and then at the end call to <code>main()</code>. Then when we start a new project we can copy over this file and simply start writing a <code>main()</code> and skip all this initializations. In so doing we've split off these the generic reusable stuff into a separate <b>startup file</b>.
+As I mentioned, the reset handler and vector table are just symbols to the linker at this point - so the next step is to write the code for them. The vector table will be set to some default values (and can be changed later) and we'll write the reset handler in a generic way that we can reuse between projects. It will do some initializations and then at the end call to <code>main()</code>. Then when we start a new project we can copy over this file and simply start writing a <code>main()</code>  skipping all that initialization. In so doing we've split off these the generic reusable stuff into a separate <b>startup file</b>.
 </p>
 
 <blockquote>
@@ -374,7 +374,7 @@ The code from top to bottom:
 <ul class="org-ul">
 <li>The first element is the SP (Stack Pointer)
 </li>
-<li>The second element in always the reset handler
+<li>The second element is always the reset handler
 </li>
 <li>After that are the remaining handlers which are being set to basically do nothing
 </li>
@@ -561,7 +561,7 @@ Now that we have a linker that can put the code in the right places, and the sta
 </p>
 
 <p>
-The libraries/modules in the LL-API are pretty fragmented/decoupled. So while we want to use the GPIO, we also need a few other libraries to get started. The GPIO peripheral for starters need to be powered on by the microcontroller (all the peripherals are powered off by default). The system responsible for that is called <i>Reset and Clock Control</i>, <b>RCC</b> for short. There is another module called <b>BUS</b> which seems to just has helper functions to turn on/off RCC sections.
+The libraries/modules in the LL-API are pretty fragmented/decoupled. So while we want to use the GPIO, we also need a few other libraries to get started. The GPIO peripheral for starters need to be powered on by the microcontroller (all the peripherals are powered off by default). The system responsible for that is called <i>Reset and Clock Control</i>, <b>RCC</b> for short. There is another module called <b>BUS</b> which seems to just have helper functions to turn on/off RCC sections.
 </p>
 
 <p>
@@ -728,7 +728,7 @@ You'll also notice I added two more linker options (you can see it's a linker op
 </ul>
 
 <p>
-The link map is like a high-level overview of how your code looks like
+The link map is a high-level overview of how your code is placed in memory
 </p>
 
 <p>
@@ -811,7 +811,7 @@ OpenOCD's software setup is rather baroque - but the <a href="http://openocd.org
 </p>
 
 <p>
-Note that for the configuration file to run register with  <code>openocd</code> when run in the shell it needs to be saved in a file called <code>openocd.cfg</code> 
+The configuration is a bit finicky. For OpenOCD to automatically pick it up it needs to be called <code>openocd.cfg</code> and it needs to be in the directory where you run <code>openocd</code>.
 </p>
 <div class="org-src-container">
 
@@ -822,7 +822,7 @@ program blinky.elf verify reset exit
 </pre>
 </div>
 <p>
-The configuration is not too complicated. It sets the interface type (ie the ST-LINK flashing dongle thing), then it sets the flashing communication protocol for talking to the chip, then the actual chip type and lastly we tell it to program the chip with the <code>.elf</code> we just made. After flashing it will verify the code, reset the controller and then exit OpenOCD
+The finaly file isn't too complicated. It sets the interface type (ie the ST-LINK flashing dongle thing), then it sets the flashing communication protocol for talking to the chip, then the actual chip type and lastly we tell it to program the chip with the <code>.elf</code> we just made. After flashing it will verify the code, reset the controller and then exit OpenOCD
 </p>
 
 <p>
@@ -1028,7 +1028,7 @@ Once opened in Emacs:<br  />
 </div>
 <div id="postamble" class="status">
 <p class="author">Author: George Kontsevich</p>
-<p class="date">Created: 2018-09-06 Thu 23:57</p>
+<p class="date">Created: 2018-09-07 Fri 17:59</p>
 <p class="creator"><a href="http://www.gnu.org/software/emacs/">Emacs</a> 25.2.2 (<a href="http://orgmode.org">Org</a> mode 8.2.10)</p>
 <p class="validation"><a href="http://validator.w3.org/check?uri=referer">Validate</a></p>
 </div>
