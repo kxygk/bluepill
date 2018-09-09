@@ -5,12 +5,15 @@ project(blinky)
 set(ELF ${PROJECT_NAME}.elf)
 
 enable_language(ASM)
-set(STARTUP_FILE "startup_stm32f103xb.c")
+set(STARTUP_FILE "startup_stm32f103xb.s")
 
 add_subdirectory(stm32f1-ll)
 
 add_executable(${ELF} ${STARTUP_FILE}
+  src/stm32f1xx_it.c
+  src/system_stm32f1xx.c
   src/main.c)
+
 target_include_directories(${ELF} PUBLIC inc)
 
 target_link_libraries(${ELF} ll )
