@@ -17,7 +17,7 @@ void SystemClock_Config(void)
   LL_FLASH_SetLatency(LL_FLASH_LATENCY_2);
 
   /* Enable HSE oscillator */
-  LL_RCC_HSE_EnableBypass();
+  LL_RCC_HSE_DisableBypass();
   LL_RCC_HSE_Enable();
   while(LL_RCC_HSE_IsReady() != 1)
   {
