@@ -5,7 +5,7 @@ project(blinky)
 set(ELF ${PROJECT_NAME}.elf)
 
 enable_language(ASM)
-set(STARTUP_FILE "startup_stm32f103xb.s")
+set(STARTUP_FILE "${PROJECT_SOURCE_DIR}/stm32f1-ll/CMSIS/Device/ST/STM32F1xx/Source/Templates/gcc/startup_stm32f103xb.s")
 
 add_subdirectory(stm32f1-ll)
 
