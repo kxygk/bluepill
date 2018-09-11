@@ -165,7 +165,11 @@ Some (but not all) of the projects from which I took ideas, inspiration and sugg
 <h2 id="org0ccfcb4">Anatomy of a build</h2>
 <div class="outline-text-2" id="text-org0ccfcb4">
 <p>
-Unfortunately getting started and just getting a light blinking involved quite a lot of steps since we have no operating system to handle all the background stuff. I am writing all the piece out here in detail - but please do consider reusing some files from the templates provided by STM. Specifically look in the Cube package in <code>STM32Cube_FW_F1_V1.6.0/Projects/STM32F103RB-Nucleo/Examples_LL/GPIO/GPIO_InfiniteLedToggling</code>. Under <code>SW4STM32</code> you will find a startup script and a linker script. And in <code>Src</code> / <code>Inc</code> you will find additional code files. I will try to mention them in passing.
+Unfortunately getting started and just getting a light blinking involved quite a lot of steps since we have no operating system to handle all the background stuff. I am writing all the pieces out here in detail mostly for illustration - but I'm doing the bare minimum to get a light blinking. Parts of the libraries/peripherals won't work if you try to do other things - so please do consider reusing some files from the templates provided by STM. Specifically look in the Cube package in <code>STM32Cube_FW_F1_V1.6.0/Projects/STM32F103RB-Nucleo/Examples_LL/GPIO/GPIO_InfiniteLedToggling</code>. Under <code>SW4STM32</code> you will find a startup script and a linker script. And in <code>Src</code> / <code>Inc</code> you will find additional code files. I will try to mention them in passing.
+</p>
+
+<p>
+A more robust setup built on top of those templates is on a separate branch called <a href="https://github.com/geokon-gh/bluepill/tree/stm32cube-template"><code>stm32cube-template</code></a> - so if you want to fork the project and use it as a basis for something then please work off of that branch.
 </p>
 </div>
 
