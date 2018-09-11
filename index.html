@@ -4,7 +4,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
 <head>
 <title>Bluepill: a GCC/CMake build environment ..</title>
-<!-- 2018-09-07 Fri 18:32 -->
+<!-- 2018-09-11 Tue 22:10 -->
 <meta  http-equiv="Content-Type" content="text/html;charset=utf-8" />
 <meta  name="generator" content="Org-mode" />
 <meta  name="author" content="George Kontsevich" />
@@ -702,6 +702,7 @@ Next will also need to tell the linker which linker script to use (which is a bi
   PROPERTIES
   LINK_FLAGS
   <span style="color: #ff1f8b;">"-T${</span><span style="color: #ff8700;">PROJECT_SOURCE_DIR</span><span style="color: #ff1f8b;">}/STM32F103RBTx_FLASH.ld \</span>
+<span style="color: #ff1f8b;">   -mthumb -mcpu=cortex-m3 \</span>
 <span style="color: #ff1f8b;">   -Wl,--gc-sections \</span>
 <span style="color: #ff1f8b;">   -Wl,-Map=${</span><span style="color: #ff8700;">PROJECT_NAME</span><span style="color: #ff1f8b;">}.map"</span>)
 </pre>
@@ -712,8 +713,14 @@ I'm appending this to the <code>CMakeLists.txt</code>, but it's something that m
 </p>
 
 <p>
-You'll also notice I added two more linker options (you can see it's a linker option b/c it starts with a <code>-Wl</code>)
+You'll also notice I added some more linker options - the first two tell the linker it the chip type  and the instruction set and the other two:
 </p>
+
+<blockquote>
+<p>
+<b>Note:</b> At first I hadn't given the computer arch/intruction-set flags b/c they're being given to the compiler below and I ended up with a very very subtly big where <code>__libc_init_array address</code> was trying to jump to some addresses right outside of the ROM. It was very bizarre and took me a whole day to track down.
+</p>
+</blockquote>
 
 <ul class="org-ul">
 <li><code>--gc-sections</code> this tells the linker to remove unused code/data from the final executable. There is a pesky <code>_exit()</code> function referrence that will often get slipped into your executable by the compiler. B/c we are running on a microcontroller the code never really exits (it can't quit and hand off executation to an OS after all!) so this exit needs to be removed by the linker. If you leave this off then the linker will get confused and start complaining you never defined an exit function.
@@ -1032,7 +1039,7 @@ Once opened in Emacs:<br  />
 </div>
 <div id="postamble" class="status">
 <p class="author">Author: George Kontsevich</p>
-<p class="date">Created: 2018-09-07 Fri 18:32</p>
+<p class="date">Created: 2018-09-11 Tue 22:10</p>
 <p class="creator"><a href="http://www.gnu.org/software/emacs/">Emacs</a> 25.2.2 (<a href="http://orgmode.org">Org</a> mode 8.2.10)</p>
 <p class="validation"><a href="http://validator.w3.org/check?uri=referer">Validate</a></p>
 </div>

@@ -341,18 +341,23 @@ If you skip writing a toolchain file then CMake will default to the system compi
 Next will also need to tell the linker which linker script to use (which is a bit ugly in CMake)
 
 #+BEGIN_SRC cmake :tangle CMakeLists.txt
-        set_target_properties(
-          ${ELF}
-          PROPERTIES
-          LINK_FLAGS
-          "-T${PROJECT_SOURCE_DIR}/STM32F103RBTx_FLASH.ld \
-           -Wl,--gc-sections \
-           -Wl,-Map=${PROJECT_NAME}.map")
+  set_target_properties(
+    ${ELF}
+    PROPERTIES
+    LINK_FLAGS
+    "-T${PROJECT_SOURCE_DIR}/STM32F103RBTx_FLASH.ld \
+     -mthumb -mcpu=cortex-m3 \
+     -Wl,--gc-sections \
+     -Wl,-Map=${PROJECT_NAME}.map")
 #+END_SRC
 
 I'm appending this to the =CMakeLists.txt=, but it's something that maybe could be in the toolchain file. However b/c it does need the target name (${ELF}) it's more convenient to just append it to the ~CMakeLists.txt~ (something to maybe revisit in the future)
 
-You'll also notice I added two more linker options (you can see it's a linker option b/c it starts with a =-Wl=)
+You'll also notice I added some more linker options - the first two tell the linker it the chip type  and the instruction set and the other two:
+
+#+BEGIN_QUOTE
+*Note:* At first I hadn't given the computer arch/intruction-set flags b/c they're being given to the compiler below and I ended up with a very very subtly big where ~__libc_init_array address~ was trying to jump to some addresses right outside of the ROM. It was very bizarre and took me a whole day to track down.
+#+END_QUOTE
 
 - =--gc-sections= this tells the linker to remove unused code/data from the final executable. There is a pesky ~_exit()~ function referrence that will often get slipped into your executable by the compiler. B/c we are running on a microcontroller the code never really exits (it can't quit and hand off executation to an OS after all!) so this exit needs to be removed by the linker. If you leave this off then the linker will get confused and start complaining you never defined an exit function.
 
