@@ -49,22 +49,31 @@ void SystemClock_Config(void)
   LL_SetSystemCoreClock(72000000);
 }
 
+#define BLINKY_PIN LL_GPIO_PIN_13
+#define TOGGLE_PIN LL_GPIO_PIN_14
 
 int main(void)
 {
     SystemClock_Config();
 
-LL_APB2_GRP1_EnableClock(LL_APB2_GRP1_PERIPH_GPIOC);
+    // enabling the clock on a peripheral effectively powers it on
+    LL_APB2_GRP1_EnableClock(LL_APB2_GRP1_PERIPH_GPIOC);
 
-LL_GPIO_SetPinMode(GPIOC, LL_GPIO_PIN_13, LL_GPIO_MODE_OUTPUT);
-LL_GPIO_SetPinSpeed(GPIOC, LL_GPIO_PIN_13, LL_GPIO_SPEED_FREQ_LOW);
+    // set pin to be an output pin
+    LL_GPIO_SetPinMode(GPIOC, BLINKY_PIN, LL_GPIO_MODE_OUTPUT);
+    LL_GPIO_SetPinSpeed(GPIOC, BLINKY_PIN, LL_GPIO_SPEED_FREQ_LOW);
+
+    // set pin to be an input pin
+    LL_GPIO_SetPinMode(GPIOC, TOGGLE_PIN, LL_GPIO_MODE_INPUT);
 
 while (1)
   {
     /* Insert delay 250 ms */
     LL_mDelay(250);
-    LL_GPIO_TogglePin(GPIOC, LL_GPIO_PIN_13);
-
+    if(!LL_GPIO_IsInputPinSet (GPIOC, TOGGLE_PIN))
+    {
+        LL_GPIO_TogglePin(GPIOC, BLINKY_PIN);
+    }
   }
 }
 
