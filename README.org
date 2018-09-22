@@ -1,2 +1,5 @@
 
+Build on top of my STM32F1 template:
 see description [[http://geokon-gh.github.io/bluepill/index.html][here]]
+
+This is just some experiments in trying to use SPI with a little OLED screen I got from Taobao. It uses the SSD1306 controller. A datasheet is available here: https://cdn-shop.adafruit.com/datasheets/SSD1306.pdf
