@@ -58,11 +58,15 @@ void SPI1_Init_Pins(void)
     // SPI1 has to share pins with GPIO.
     // There are two options available as listed in Section: 9.3.10
     //
-    // We will use option 1 with shared pins on GPIOA (PA4-7)
+    // By default it will use the first option - shared pins on GPIOA (PA4-7)
     // uint32_t NSS = LL_GPIO_PIN_4;
     uint32_t SCK = LL_GPIO_PIN_5;
     // uint32_t MISO = LL_GPIO_PIN_6;
     uint32_t MOSI = LL_GPIO_PIN_7;
+    //
+    // If we want to use the second set of alternate pins we use 
+    // LL_GPIO_AF_EnableRemap_SPI1(); // see gpio.h for details
+
     // First we enable the clock on GPIOA (ie. power it on)
     LL_APB2_GRP1_EnableClock ( LL_APB2_GRP1_PERIPH_GPIOA );
     // And enable the use of alternate functions on pins
@@ -72,9 +76,6 @@ void SPI1_Init_Pins(void)
     LL_GPIO_AF_Remap_SWJ_NOJTAG(); //??
     while ( ( AFIO->MAPR & AFIO_MAPR_SWJ_CFG_JTAGDISABLE )  //??
         != AFIO_MAPR_SWJ_CFG_JTAGDISABLE ); //??
-
-    // Next we need to tell the SPI1 pins to use their "alternate function"
-    LL_GPIO_AF_EnableRemap_SPI1();
 
     LL_GPIO_SetPinMode ( GPIOA, SCK, LL_GPIO_MODE_ALTERNATE );
     LL_GPIO_SetPinMode ( GPIOA, MOSI, LL_GPIO_MODE_ALTERNATE );
