@@ -91,7 +91,8 @@ void SPI1_Init_Pins(void)
     LL_APB2_GRP1_EnableClock ( LL_APB2_GRP1_PERIPH_SPI1 );
 }
 
-void SPI1_Init(void)
+
+void SPI1_Init_Params(void)
 {
     // SPI Parameters are collected into a struct
     LL_SPI_InitTypeDef spi_initstruct;
@@ -117,7 +118,7 @@ int main(void)
     SystemClock_Config();
 
     SPI1_Init_Pins();
-    SPI1_Init();
+    SPI1_Init_Params();
 
     // enabling the clock on a peripheral effectively powers it on
     LL_APB2_GRP1_EnableClock(LL_APB2_GRP1_PERIPH_GPIOC);
