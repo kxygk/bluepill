@@ -133,6 +133,9 @@ int main(void)
 while (1)
   {
     /* Insert delay 250 ms */
+    if(LL_SPI_IsActiveFlag_TXE(SPI1))
+        LL_SPI_TransmitData8(SPI1,0xf0);
+
     LL_mDelay(250);
     if(!LL_GPIO_IsInputPinSet (GPIOC, TOGGLE_PIN))
     {
