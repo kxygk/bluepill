@@ -106,6 +106,7 @@ void SPI1_Init(void)
     spi_initstruct.Mode              = LL_SPI_MODE_MASTER;
 
     LL_SPI_Init(SPI1, &spi_initstruct); // and sent into a Init function
+    LL_SPI_Enable(SPI1);
 }
 
 #define BLINKY_PIN LL_GPIO_PIN_13
