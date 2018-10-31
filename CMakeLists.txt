@@ -8,11 +8,9 @@ enable_language(ASM)
 set(STARTUP_FILE "${PROJECT_SOURCE_DIR}/stm32f1-ll/CMSIS/Device/ST/STM32F1xx/Source/Templates/gcc/startup_stm32f103xb.s")
 
 add_subdirectory(stm32f1-ll)
+add_subdirectory(src)
 
-add_executable(${ELF} ${STARTUP_FILE}
-  src/stm32f1xx_it.c
-  src/system_stm32f1xx.c
-  src/main.c)
+add_executable(${ELF} ${STARTUP_FILE} ${SOURCE_FILES})
 
 target_include_directories(${ELF} PUBLIC inc)
 
