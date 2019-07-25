@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<!-- 2019-03-02 六 11:26 -->
+<!-- 2019-07-25 Thu 11:14 -->
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Bluepill: a GCC/CMake build environment ..</title>
@@ -9,53 +9,8 @@
 <meta name="author" content="George Kontsevich">
 <meta name="description" content="A GCC/OpenOCD/CMake based setup for building code for the bluepill STM32F1 boards"
 >
-<link rel="stylesheet" type="text/css" href="../static/worg.css" />
-<script type="text/javascript">
-/*
-@licstart  The following is the entire license notice for the
-JavaScript code in this tag.
-
-Copyright (C) 2012-2018 Free Software Foundation, Inc.
-
-The JavaScript code in this tag is free software: you can
-redistribute it and/or modify it under the terms of the GNU
-General Public License (GNU GPL) as published by the Free Software
-Foundation, either version 3 of the License, or (at your option)
-any later version.  The code is distributed WITHOUT ANY WARRANTY;
-without even the implied warranty of MERCHANTABILITY or FITNESS
-FOR A PARTICULAR PURPOSE.  See the GNU GPL for more details.
-
-As additional permission under GNU GPL version 3 section 7, you
-may distribute non-source (e.g., minimized or compacted) forms of
-that code without the copy of the GNU GPL normally required by
-section 4, provided you include this license notice and a URL
-through which recipients can access the Corresponding Source.
-
-
-@licend  The above is the entire license notice
-for the JavaScript code in this tag.
-*/
-<!--/*--><![CDATA[/*><!--*/
- function CodeHighlightOn(elem, id)
- {
-   var target = document.getElementById(id);
-   if(null != target) {
-     elem.cacheClassElem = elem.className;
-     elem.cacheClassTarget = target.className;
-     target.className = "code-highlighted";
-     elem.className   = "code-highlighted";
-   }
- }
- function CodeHighlightOff(elem, id)
- {
-   var target = document.getElementById(id);
-   if(elem.cacheClassElem)
-     elem.className = elem.cacheClassElem;
-   if(elem.cacheClassTarget)
-     target.className = elem.cacheClassTarget;
- }
-/*]]>*///-->
-</script>
+<link rel="stylesheet" type="text/css" href="../web/worg.css" />
+<link rel="shortcut icon" href="../web/panda.svg" type="image/x-icon">
 </head>
 <body>
 <div id="org-div-home-and-up">
@@ -68,34 +23,34 @@ for the JavaScript code in this tag.
 <h2>Table of Contents</h2>
 <div id="text-table-of-contents">
 <ul>
-<li><a href="#org3f675ce">Intro</a>
+<li><a href="#orgb565b63">Intro</a>
 <ul>
-<li><a href="#org600ac90">A Quick start</a></li>
-<li><a href="#org97b3e86">Prior Art</a></li>
+<li><a href="#org4978081">A Quick start</a></li>
+<li><a href="#orge98eb0c">Prior Art</a></li>
 </ul>
 </li>
-<li><a href="#org0ccfcb4">Anatomy of a build</a>
+<li><a href="#orgb6bc9ea">Anatomy of a build</a>
 <ul>
-<li><a href="#org697a1e7">CMake</a></li>
-<li><a href="#org829d625">The Linker Script</a></li>
-<li><a href="#org36dc995">The Startup File (WIP)</a></li>
-<li><a href="#org8a5cb0b">The STM Libraries</a></li>
-<li><a href="#orga42128c">Our blinky code</a></li>
-<li><a href="#org71adfc2">The toolchain</a></li>
+<li><a href="#org0f628c9">CMake</a></li>
+<li><a href="#org033f82e">The Linker Script</a></li>
+<li><a href="#orgfc0c771">The Startup File (WIP)</a></li>
+<li><a href="#org35a10b4">The STM Libraries</a></li>
+<li><a href="#org685d60f">Our blinky code</a></li>
+<li><a href="#org5132f15">The toolchain</a></li>
 </ul>
 </li>
-<li><a href="#org06ac688">Getting the code on the chip</a>
+<li><a href="#orge4d5d17">Getting the code on the chip</a>
 <ul>
-<li><a href="#org0335f3f">Building</a></li>
-<li><a href="#org2539437">OpenOCD</a></li>
+<li><a href="#org9b6af62">Building</a></li>
+<li><a href="#org3ca0489">OpenOCD</a></li>
 </ul>
 </li>
-<li><a href="#org37dc695">Intergrated Development</a>
+<li><a href="#orgca83993">Intergrated Development</a>
 <ul>
-<li><a href="#orgf85b15f">GDB</a></li>
-<li><a href="#orga68600e">KDevelop</a>
+<li><a href="#org5e07258">GDB</a></li>
+<li><a href="#orgdb7a6f9">KDevelop</a>
 <ul>
-<li><a href="#org8335255">Extras</a></li>
+<li><a href="#orgcc50fbd">Extras</a></li>
 </ul>
 </li>
 </ul>
@@ -104,9 +59,9 @@ for the JavaScript code in this tag.
 </div>
 </div>
 
-<div id="outline-container-org3f675ce" class="outline-2">
-<h2 id="org3f675ce">Intro</h2>
-<div class="outline-text-2" id="text-org3f675ce">
+<div id="outline-container-orgb565b63" class="outline-2">
+<h2 id="orgb565b63">Intro</h2>
+<div class="outline-text-2" id="text-orgb565b63">
 <p>
 In this guide we will setup a simple minimal blinky for the Bluepill - a very cheap board available from China with the <code>STM32F103C8T6</code> chip on it. They cost a smidge over one dollar each. 
 </p>
@@ -126,9 +81,9 @@ This file and webpage is an org-document and the code within is automatically ta
 </p>
 </div>
 
-<div id="outline-container-org600ac90" class="outline-3">
-<h3 id="org600ac90">A Quick start</h3>
-<div class="outline-text-3" id="text-org600ac90">
+<div id="outline-container-org4978081" class="outline-3">
+<h3 id="org4978081">A Quick start</h3>
+<div class="outline-text-3" id="text-org4978081">
 <p>
 If you just want to try it out you just need to install <code>cmake</code> <code>gcc-arm-none-eabi</code> and <code>openocd</code>. You will also need a bluepill and a <b>ST-Link V2</b> device. Attach those to your computer and run:
 </p>
@@ -143,9 +98,9 @@ opeocd
 </div>
 </div>
 
-<div id="outline-container-org97b3e86" class="outline-3">
-<h3 id="org97b3e86">Prior Art</h3>
-<div class="outline-text-3" id="text-org97b3e86">
+<div id="outline-container-orge98eb0c" class="outline-3">
+<h3 id="orge98eb0c">Prior Art</h3>
+<div class="outline-text-3" id="text-orge98eb0c">
 <p>
 Some (but not all) of the projects from which I took ideas, inspiration and suggestions:
 </p>
@@ -161,17 +116,17 @@ Some (but not all) of the projects from which I took ideas, inspiration and sugg
 </div>
 </div>
 
-<div id="outline-container-org0ccfcb4" class="outline-2">
-<h2 id="org0ccfcb4">Anatomy of a build</h2>
-<div class="outline-text-2" id="text-org0ccfcb4">
+<div id="outline-container-orgb6bc9ea" class="outline-2">
+<h2 id="orgb6bc9ea">Anatomy of a build</h2>
+<div class="outline-text-2" id="text-orgb6bc9ea">
 <p>
 Unfortunately getting started and just getting a light blinking involved quite a lot of steps since we have no operating system to handle all the background stuff. I am writing all the piece out here in detail - but please do consider reusing some files from the templates provided by STM. Specifically look in the Cube package in <code>STM32Cube_FW_F1_V1.6.0/Projects/STM32F103RB-Nucleo/Examples_LL/GPIO/GPIO_InfiniteLedToggling</code>. Under <code>SW4STM32</code> you will find a startup script and a linker script. And in <code>Src</code> / <code>Inc</code> you will find additional code files. I will try to mention them in passing.
 </p>
 </div>
 
-<div id="outline-container-org697a1e7" class="outline-3">
-<h3 id="org697a1e7">CMake</h3>
-<div class="outline-text-3" id="text-org697a1e7">
+<div id="outline-container-org0f628c9" class="outline-3">
+<h3 id="org0f628c9">CMake</h3>
+<div class="outline-text-3" id="text-org0f628c9">
 <p>
 CMake is meta build automation tool. You define your project targets, how you want things linked and built and then it will generate build tools for you. Typically we just generate Make files but it can also coordinate system installation, generate installer wizards for Windows, generate Visual Studio project files and more. CMake has in effect standardized builds into a common set of easy to use terms - so while it's not as flexible as Make and you have to follow a certain layout/pattern, in the end everything ends up cleaner and more reusable and it's hard to shoot yourself in the foot. For us it will be our central tool for coordinating the build and we will define our whole project through a <code>CMakeLists.txt</code> file in our project root. We will see later that actually CMake will give us crucial project meta-information that Clang-tools and IDEs like CLion and KDevelop can hook into it to provide code highlighting/completion and other goodies. All of this is a serious quality-of-life improvement over vanilla Make. Because CMake has become the defacto standard in the C++ world the ecosystem of tools around it just keeps growing year to year.
 </p>
@@ -181,23 +136,23 @@ Starting our <code>CMakeLists.txt</code> we write out the usual CMake version an
 </p>
 
 <div class="org-src-container">
-<pre class="src src-cmake">cmake_minimum_required(VERSION 3.0)
-project(blinky)
+<pre class="src src-cmake"><span style="color: #006699;">cmake_minimum_required</span>(VERSION 3.0)
+<span style="color: #006699;">project</span>(blinky)
 </pre>
 </div>
 <p>
 Our end goal is to create an ELF file that we will flash onto the chip. I suggest adding the <code>.elf</code> extension explicitly to your target name. To keep the template generic enough I just name the elf the same as the project name. So if you fork this project and do your own thing - you can just change the project name and you'll be good to go
 </p>
 <div class="org-src-container">
-<pre class="src src-cmake">set(ELF ${PROJECT_NAME}.elf)
+<pre class="src src-cmake"><span style="color: #006699;">set</span>(ELF ${<span style="color: #BA36A5;">PROJECT_NAME</span>}.elf)
 </pre>
 </div>
 </div>
 </div>
 
-<div id="outline-container-org829d625" class="outline-3">
-<h3 id="org829d625">The Linker Script</h3>
-<div class="outline-text-3" id="text-org829d625">
+<div id="outline-container-org033f82e" class="outline-3">
+<h3 id="org033f82e">The Linker Script</h3>
+<div class="outline-text-3" id="text-org033f82e">
 <p>
 When an application normally runs on a desktop machine it's generally running using virtual memory in a virtual application-specific address space. From the applications point of view it can manipulate its own memory however it wants - and it's the operating system that then translates that into safe operations on the actual memory (for instance to insure that the applications don't touch any memory region they shouldn't)
 </p>
@@ -216,7 +171,7 @@ Because of these new limitations we can't just start executing code at address z
     rom (rx) : ORIGIN = 0x08000000, LENGTH = 64K
     ram (rwx) : ORIGIN = 0x20000000, LENGTH = 20K
 }
-<span style="color: #ef2929;">PROVIDE</span>(_stack = ORIGIN(ram) + LENGTH(ram));
+<span style="color: #006699;">PROVIDE</span>(_stack = ORIGIN(ram) + LENGTH(ram));
 </pre>
 </div>
 
@@ -229,8 +184,8 @@ So instead of a <code>main()</code> or something, the first thing in ROM is a <i
 </p>
 
 <div class="org-src-container">
-<pre class="src src-c"><span style="color: #ef2929;">EXTERN</span>(vector_table);
-<span style="color: #ef2929;">ENTRY</span>(reset_handler);
+<pre class="src src-c"><span style="color: #006699;">EXTERN</span>(vector_table);
+<span style="color: #006699;">ENTRY</span>(reset_handler);
 </pre>
 </div>
 <p>
@@ -258,9 +213,9 @@ So the chip doesn't need to hunt for the vector table. It's always in the same s
 </div>
 </div>
 
-<div id="outline-container-org36dc995" class="outline-3">
-<h3 id="org36dc995">The Startup File (WIP)</h3>
-<div class="outline-text-3" id="text-org36dc995">
+<div id="outline-container-orgfc0c771" class="outline-3">
+<h3 id="orgfc0c771">The Startup File (WIP)</h3>
+<div class="outline-text-3" id="text-orgfc0c771">
 <p>
 As I mentioned, the reset handler and vector table are just symbols to the linker at this point - so the next step is to write the code for them. The vector table will be set to some default values (and can be changed later) and we'll write the reset handler in a generic way that we can reuse between projects. It will do some initializations and then at the end call to <code>main()</code>. Then when we start a new project we can copy over this file and simply start writing a <code>main()</code>  skipping all that initialization. In so doing we've split off these the generic reusable stuff into a separate <b>startup file</b>.
 </p>
@@ -294,36 +249,36 @@ The code from top to bottom:
 </ul></li>
 </ul>
 <div class="org-src-container">
-<pre class="src src-c">  <span style="color: #18b2b2;">int</span> <span style="color: #ef2929;">main</span>(<span style="color: #18b2b2;">void</span>);
-  <span style="color: #18b2b2;">void</span> <span style="color: #00af00;">__attribute__</span> ((weak, naked)) <span style="color: #ef2929;">reset_handler</span>(<span style="color: #18b2b2;">void</span>) {
-      (*(<span style="color: #00af00;">volatile</span> <span style="color: #18b2b2;">unsigned</span> <span style="color: #18b2b2;">int</span> *)(0x40021018)) |= (1 &lt;&lt; 4);
+<pre class="src src-c">  <span style="color: #6434A3;">int</span> <span style="color: #006699;">main</span>(<span style="color: #6434A3;">void</span>);
+  <span style="color: #6434A3;">void</span> <span style="color: #0000FF;">__attribute__</span> ((weak, naked)) <span style="color: #006699;">reset_handler</span>(<span style="color: #6434A3;">void</span>) {
+      (*(<span style="color: #0000FF;">volatile</span> <span style="color: #6434A3;">unsigned</span> <span style="color: #6434A3;">int</span> *)(0x40021018)) |= (1 &lt;&lt; 4);
 
-      (*(<span style="color: #00af00;">volatile</span> <span style="color: #18b2b2;">unsigned</span> <span style="color: #18b2b2;">int</span> *)(0x40011004)) |= (0x00 &lt;&lt; (((13 - 8) * 4) + 2));
-      (*(<span style="color: #00af00;">volatile</span> <span style="color: #18b2b2;">unsigned</span> <span style="color: #18b2b2;">int</span> *)(0x40011004)) |= (0x02 &lt;&lt; ((13 - 8) * 4));
+      (*(<span style="color: #0000FF;">volatile</span> <span style="color: #6434A3;">unsigned</span> <span style="color: #6434A3;">int</span> *)(0x40011004)) |= (0x00 &lt;&lt; (((13 - 8) * 4) + 2));
+      (*(<span style="color: #0000FF;">volatile</span> <span style="color: #6434A3;">unsigned</span> <span style="color: #6434A3;">int</span> *)(0x40011004)) |= (0x02 &lt;&lt; ((13 - 8) * 4));
       main();
   }
 
-<span style="color: #18b2b2;">void</span> <span style="color: #ef2929;">blocking_handler</span>(<span style="color: #18b2b2;">void</span>) { <span style="color: #00af00;">while</span> (1); }
-<span style="color: #18b2b2;">void</span> <span style="color: #ef2929;">null_handler</span>(<span style="color: #18b2b2;">void</span>) {}
-<span style="color: #00af00;">extern</span> <span style="color: #18b2b2;">unsigned</span> <span style="color: #ff8700;">_stack</span>;
+<span style="color: #6434A3;">void</span> <span style="color: #006699;">blocking_handler</span>(<span style="color: #6434A3;">void</span>) { <span style="color: #0000FF;">while</span> (1); }
+<span style="color: #6434A3;">void</span> <span style="color: #006699;">null_handler</span>(<span style="color: #6434A3;">void</span>) {}
+<span style="color: #0000FF;">extern</span> <span style="color: #6434A3;">unsigned</span> <span style="color: #BA36A5;">_stack</span>;
 
-<span style="color: #00af00;">__attribute__</span> ((section(<span style="color: #ff1f8b;">".vectors"</span>)))
-<span style="color: #00af00;">struct</span> {
-    <span style="color: #18b2b2;">unsigned</span> <span style="color: #18b2b2;">int</span> *<span style="color: #ff8700;">initial_sp_value</span>;
-    <span style="color: #18b2b2;">void</span> (*reset)(<span style="color: #18b2b2;">void</span>);
-    <span style="color: #18b2b2;">void</span> (*nmi)(<span style="color: #18b2b2;">void</span>);
-    <span style="color: #18b2b2;">void</span> (*hard_fault)(<span style="color: #18b2b2;">void</span>);
-    <span style="color: #18b2b2;">void</span> (*memory_manage_fault)(<span style="color: #18b2b2;">void</span>);
-    <span style="color: #18b2b2;">void</span> (*bus_fault)(<span style="color: #18b2b2;">void</span>);
-    <span style="color: #18b2b2;">void</span> (*usage_fault)(<span style="color: #18b2b2;">void</span>);
-    <span style="color: #18b2b2;">void</span> (*reserved_x001c[4])(<span style="color: #18b2b2;">void</span>);
-    <span style="color: #18b2b2;">void</span> (*sv_call)(<span style="color: #18b2b2;">void</span>);
-    <span style="color: #18b2b2;">void</span> (*debug_monitor)(<span style="color: #18b2b2;">void</span>);
-    <span style="color: #18b2b2;">void</span> (*reserved_x0034)(<span style="color: #18b2b2;">void</span>);
-    <span style="color: #18b2b2;">void</span> (*pend_sv)(<span style="color: #18b2b2;">void</span>);
-    <span style="color: #18b2b2;">void</span> (*systick)(<span style="color: #18b2b2;">void</span>);
-    <span style="color: #18b2b2;">void</span> (*irq[68])(<span style="color: #18b2b2;">void</span>);
-} <span style="color: #ff8700;">vector_table</span> = {
+<span style="color: #0000FF;">__attribute__</span> ((section(<span style="color: #008000;">".vectors"</span>)))
+<span style="color: #0000FF;">struct</span> {
+    <span style="color: #6434A3;">unsigned</span> <span style="color: #6434A3;">int</span> *<span style="color: #BA36A5;">initial_sp_value</span>;
+    <span style="color: #6434A3;">void</span> (*reset)(<span style="color: #6434A3;">void</span>);
+    <span style="color: #6434A3;">void</span> (*nmi)(<span style="color: #6434A3;">void</span>);
+    <span style="color: #6434A3;">void</span> (*hard_fault)(<span style="color: #6434A3;">void</span>);
+    <span style="color: #6434A3;">void</span> (*memory_manage_fault)(<span style="color: #6434A3;">void</span>);
+    <span style="color: #6434A3;">void</span> (*bus_fault)(<span style="color: #6434A3;">void</span>);
+    <span style="color: #6434A3;">void</span> (*usage_fault)(<span style="color: #6434A3;">void</span>);
+    <span style="color: #6434A3;">void</span> (*reserved_x001c[4])(<span style="color: #6434A3;">void</span>);
+    <span style="color: #6434A3;">void</span> (*sv_call)(<span style="color: #6434A3;">void</span>);
+    <span style="color: #6434A3;">void</span> (*debug_monitor)(<span style="color: #6434A3;">void</span>);
+    <span style="color: #6434A3;">void</span> (*reserved_x0034)(<span style="color: #6434A3;">void</span>);
+    <span style="color: #6434A3;">void</span> (*pend_sv)(<span style="color: #6434A3;">void</span>);
+    <span style="color: #6434A3;">void</span> (*systick)(<span style="color: #6434A3;">void</span>);
+    <span style="color: #6434A3;">void</span> (*irq[68])(<span style="color: #6434A3;">void</span>);
+} <span style="color: #BA36A5;">vector_table</span> = {
     .initial_sp_value = &amp;_stack,
     .reset = reset_handler,
     .nmi = null_handler,
@@ -414,15 +369,15 @@ Now if you open up some startup files in the templates provided by STM you will 
 Once we have the file we can add it to CMake
 </p>
 <div class="org-src-container">
-<pre class="src src-cmake">enable_language(ASM)
-set(STARTUP_FILE "startup_stm32f103xb.c")
+<pre class="src src-cmake"><span style="color: #006699;">enable_language</span>(ASM)
+<span style="color: #006699;">set</span>(STARTUP_FILE <span style="color: #008000;">"startup_stm32f103xb.c"</span>)
 </pre>
 </div>
 </div>
 </div>
-<div id="outline-container-org8a5cb0b" class="outline-3">
-<h3 id="org8a5cb0b">The STM Libraries</h3>
-<div class="outline-text-3" id="text-org8a5cb0b">
+<div id="outline-container-org35a10b4" class="outline-3">
+<h3 id="org35a10b4">The STM Libraries</h3>
+<div class="outline-text-3" id="text-org35a10b4">
 <p>
 Next we need actual libraries to write code with - otherwise we are kinda stuck poking at memory addresses with the datasheet. These are all provided in one bundle called <b>Cube</b> and it's on <a href="https://www.st.com/content/st_com/en/products/embedded-software/mcus-embedded-software/stm32-embedded-software/stm32cube-mcu-packages/stm32cubef1.html">the STM website</a>. Here is a quick digest of what you get:
 </p>
@@ -446,7 +401,7 @@ The library bundle has been added as a submodule to this project, but if you for
 </p>
 
 <div class="org-src-container">
-<pre class="src src-cmake">add_subdirectory(stm32f1-ll)
+<pre class="src src-cmake"><span style="color: #006699;">add_subdirectory</span>(stm32f1-ll)
 </pre>
 </div>
 
@@ -458,9 +413,9 @@ The library bundle has been added as a submodule to this project, but if you for
 </div>
 </div>
 
-<div id="outline-container-orga42128c" class="outline-3">
-<h3 id="orga42128c">Our blinky code</h3>
-<div class="outline-text-3" id="text-orga42128c">
+<div id="outline-container-org685d60f" class="outline-3">
+<h3 id="org685d60f">Our blinky code</h3>
+<div class="outline-text-3" id="text-org685d60f">
 <p>
 Now that we have a linker that can put the code in the right places, and the startup code to initialize things correctly for us we can finally write our blinky code in <code>/src/main.c</code>
 </p>
@@ -473,16 +428,16 @@ The libraries/modules in the LL-API are pretty fragmented/decoupled. So while we
 So first we include all three of these modules
 </p>
 <div class="org-src-container">
-<pre class="src src-c"><span style="color: #b218b2;">#include</span> <span style="color: #ff1f8b;">"stm32f1xx_ll_bus.h"</span>
-<span style="color: #b218b2;">#include</span> <span style="color: #ff1f8b;">"stm32f1xx_ll_rcc.h"</span>
-<span style="color: #b218b2;">#include</span> <span style="color: #ff1f8b;">"stm32f1xx_ll_gpio.h"</span>
+<pre class="src src-c"><span style="color: #808080;">#include</span> <span style="color: #008000;">"stm32f1xx_ll_bus.h"</span>
+<span style="color: #808080;">#include</span> <span style="color: #008000;">"stm32f1xx_ll_rcc.h"</span>
+<span style="color: #808080;">#include</span> <span style="color: #008000;">"stm32f1xx_ll_gpio.h"</span>
 </pre>
 </div>
 <p>
 Then we can start writing our <code>main()</code>
 </p>
 <div class="org-src-container">
-<pre class="src src-c"><span style="color: #18b2b2;">int</span> <span style="color: #ef2929;">main</span>(<span style="color: #18b2b2;">void</span>)
+<pre class="src src-c"><span style="color: #6434A3;">int</span> <span style="color: #006699;">main</span>(<span style="color: #6434A3;">void</span>)
 {
 </pre>
 </div>
@@ -490,27 +445,27 @@ Then we can start writing our <code>main()</code>
 We use a BUS module macro to enable the GPIO peripheral. The LED we want to blink on the board is labeled <b>PC13</b>. PC stands for Port C and it's number 13. So we enable GPIO port C. The peripherals controlled by the RCC system are split into two sections APB1 and APB2. GPIO is in the APB2 section.
 </p>
 <div class="org-src-container">
-<pre class="src src-c"><span style="color: #ef2929;">LL_APB2_GRP1_EnableClock</span>(LL_APB2_GRP1_PERIPH_GPIOC);
+<pre class="src src-c"><span style="color: #006699;">LL_APB2_GRP1_EnableClock</span>(LL_APB2_GRP1_PERIPH_GPIOC);
 </pre>
 </div>
 <p>
 We then set this GPIO pin to be an ouput pin and we set it to be a high speed pin
 </p>
 <div class="org-src-container">
-<pre class="src src-c"><span style="color: #ef2929;">LL_GPIO_SetPinMode</span>(GPIOC, LL_GPIO_PIN_13, LL_GPIO_MODE_OUTPUT);
-<span style="color: #ef2929;">LL_GPIO_SetPinSpeed</span>(GPIOC, LL_GPIO_PIN_13, LL_GPIO_SPEED_FREQ_HIGH);
+<pre class="src src-c"><span style="color: #006699;">LL_GPIO_SetPinMode</span>(GPIOC, LL_GPIO_PIN_13, LL_GPIO_MODE_OUTPUT);
+<span style="color: #006699;">LL_GPIO_SetPinSpeed</span>(GPIOC, LL_GPIO_PIN_13, LL_GPIO_SPEED_FREQ_HIGH);
 </pre>
 </div>
 <p>
 Now that we have the GPIO pin setup we just have an infinite loop that toggles the pin and spends some time sitting in a loop doing nothing
 </p>
 <div class="org-src-container">
-<pre class="src src-c">  <span style="color: #00af00;">while</span> (1)
+<pre class="src src-c">  <span style="color: #0000FF;">while</span> (1)
   {
     LL_GPIO_TogglePin(GPIOC, LL_GPIO_PIN_13);
-    <span style="color: #18b2b2;">int</span> <span style="color: #ff8700;">i</span> = 200000;<span style="color: #b2b2b2; font-style: italic;">/* </span><span style="color: #b2b2b2; font-style: italic;">About 1/4 second delay </span><span style="color: #b2b2b2; font-style: italic;">*/</span>
-    <span style="color: #00af00;">while</span> (i-- &gt; 0) {
-        <span style="color: #00af00;">asm</span>(<span style="color: #ff1f8b;">"nop"</span>);<span style="color: #b2b2b2; font-style: italic;">/* </span><span style="color: #b2b2b2; font-style: italic;">This stops it optimising code out </span><span style="color: #b2b2b2; font-style: italic;">*/</span>
+    <span style="color: #6434A3;">int</span> <span style="color: #BA36A5;">i</span> = 200000;<span style="color: #8D8D84;">/* </span><span style="color: #8D8D84; font-style: italic;">About 1/4 second delay </span><span style="color: #8D8D84;">*/</span>
+    <span style="color: #0000FF;">while</span> (i-- &gt; 0) {
+        <span style="color: #0000FF;">asm</span>(<span style="color: #008000;">"nop"</span>);<span style="color: #8D8D84;">/* </span><span style="color: #8D8D84; font-style: italic;">This stops it optimising code out </span><span style="color: #8D8D84;">*/</span>
     }
   }
 }
@@ -528,30 +483,30 @@ If you look at the GPIO example that comes with the Cube package you will see it
 We can now return to CMake and declare our target elf file and link up our <code>main.c</code> with the startup file.
 </p>
 <div class="org-src-container">
-<pre class="src src-cmake">add_executable(${ELF} ${STARTUP_FILE}
+<pre class="src src-cmake"><span style="color: #006699;">add_executable</span>(${<span style="color: #BA36A5;">ELF</span>} ${<span style="color: #BA36A5;">STARTUP_FILE</span>}
   src/main.c)
-target_include_directories(${ELF} PUBLIC inc)
+<span style="color: #006699;">target_include_directories</span>(${<span style="color: #BA36A5;">ELF</span>} PUBLIC inc)
 </pre>
 </div>
 <p>
 and then we link it to the LL-API library we are using
 </p>
 <div class="org-src-container">
-<pre class="src src-cmake">target_link_libraries(${ELF} ll )
+<pre class="src src-cmake"><span style="color: #006699;">target_link_libraries</span>(${<span style="color: #BA36A5;">ELF</span>} ll )
 </pre>
 </div>
 <p>
 And I'm also adding in a include directory for future use (it's empty for now)
 </p>
 <div class="org-src-container">
-<pre class="src src-cmake">target_include_directories(${ELF} PUBLIC inc)
+<pre class="src src-cmake"><span style="color: #006699;">target_include_directories</span>(${<span style="color: #BA36A5;">ELF</span>} PUBLIC inc)
 </pre>
 </div>
 </div>
 </div>
-<div id="outline-container-org71adfc2" class="outline-3">
-<h3 id="org71adfc2">The toolchain</h3>
-<div class="outline-text-3" id="text-org71adfc2">
+<div id="outline-container-org5132f15" class="outline-3">
+<h3 id="org5132f15">The toolchain</h3>
+<div class="outline-text-3" id="text-org5132f15">
 <p>
 Now that we have all the pieces we just need to tell CMake how we want everything compiled. I'm building using <code>gcc-arm-none-eabi</code> and its associated tools. I did this on a Debian system where this version of gcc can be installed from the repository (name <code>gcc-arm-none-eabi</code>)
 </p>
@@ -561,22 +516,22 @@ Canonically the compiler is specified in a separate file so that you can subsitu
 </p>
 
 <div class="org-src-container">
-<pre class="src src-cmake">set(CMAKE_SYSTEM_NAME Generic) # 'Generic' is used for embedded systems
+<pre class="src src-cmake"><span style="color: #006699;">set</span>(CMAKE_SYSTEM_NAME Generic) <span style="color: #8D8D84; font-style: italic;"># 'Generic' is used for embedded systems</span>
 
-set(CMAKE_C_COMPILER arm-none-eabi-gcc)
-set(CMAKE_CXX_COMPILER arm-none-eabi-g++)
-set(CMAKE_ASM_COMPILER arm-none-eabi-gcc)
+<span style="color: #006699;">set</span>(CMAKE_C_COMPILER arm-none-eabi-gcc)
+<span style="color: #006699;">set</span>(CMAKE_CXX_COMPILER arm-none-eabi-g++)
+<span style="color: #006699;">set</span>(CMAKE_ASM_COMPILER arm-none-eabi-gcc)
 
-# tells CMake not to try to link executables during its interal checks
-# things are not going to link properly without a linker script
-set(CMAKE_TRY_COMPILE_TARGET_TYPE STATIC_LIBRARY)
+<span style="color: #8D8D84; font-style: italic;"># tells CMake not to try to link executables during its interal checks</span>
+<span style="color: #8D8D84; font-style: italic;"># things are not going to link properly without a linker script</span>
+<span style="color: #006699;">set</span>(CMAKE_TRY_COMPILE_TARGET_TYPE STATIC_LIBRARY)
 
-set(CMAKE_OBJCOPY arm-none-eabi-objcopy)
-set(CMAKE_OBJDUMP arm-none-eabi-objdump)
-set(CMAKE_SIZE arm-none-eabi-size)
-set(CMAKE_DEBUGGER arm-none-eabi-gdb)
-set(CMAKE_DEBUGGER arm-none-eabi-gdb)
-set(CMAKE_CPPFILT arm-none-eabi-c++filt)
+<span style="color: #006699;">set</span>(CMAKE_OBJCOPY arm-none-eabi-objcopy)
+<span style="color: #006699;">set</span>(CMAKE_OBJDUMP arm-none-eabi-objdump)
+<span style="color: #006699;">set</span>(CMAKE_SIZE arm-none-eabi-size)
+<span style="color: #006699;">set</span>(CMAKE_DEBUGGER arm-none-eabi-gdb)
+<span style="color: #006699;">set</span>(CMAKE_DEBUGGER arm-none-eabi-gdb)
+<span style="color: #006699;">set</span>(CMAKE_CPPFILT arm-none-eabi-c++filt)
 </pre>
 </div>
 <p>
@@ -588,14 +543,14 @@ Next will also need to tell the linker which linker script to use (which is a bi
 </p>
 
 <div class="org-src-container">
-<pre class="src src-cmake">set_target_properties(
-  ${ELF}
+<pre class="src src-cmake"><span style="color: #006699;">set_target_properties</span>(
+  ${<span style="color: #BA36A5;">ELF</span>}
   PROPERTIES
   LINK_FLAGS
-  "-T${PROJECT_SOURCE_DIR}/STM32F103RBTx_FLASH.ld \
-   -mthumb -mcpu=cortex-m3 \
-   -Wl,--gc-sections \
-   -Wl,-Map=${PROJECT_NAME}.map")
+  <span style="color: #008000;">"-T${</span><span style="color: #BA36A5;">PROJECT_SOURCE_DIR</span><span style="color: #008000;">}/STM32F103RBTx_FLASH.ld \</span>
+<span style="color: #008000;">   -mthumb -mcpu=cortex-m3 \</span>
+<span style="color: #008000;">   -Wl,--gc-sections \</span>
+<span style="color: #008000;">   -Wl,-Map=${</span><span style="color: #BA36A5;">PROJECT_NAME</span><span style="color: #008000;">}.map"</span>)
 </pre>
 </div>
 
@@ -637,7 +592,7 @@ We then also need to let the compiler know our target architecture and some comp
 </p>
 
 <div class="org-src-container">
-<pre class="src src-cmake">target_compile_options(${ELF} PUBLIC
+<pre class="src src-cmake"><span style="color: #006699;">target_compile_options</span>(${<span style="color: #BA36A5;">ELF</span>} PUBLIC
   -Wall 
   -g 
   -std=gnu99 
@@ -664,13 +619,13 @@ We then also need to let the compiler know our target architecture and some comp
 </div>
 </div>
 
-<div id="outline-container-org06ac688" class="outline-2">
-<h2 id="org06ac688">Getting the code on the chip</h2>
-<div class="outline-text-2" id="text-org06ac688">
+<div id="outline-container-orge4d5d17" class="outline-2">
+<h2 id="orge4d5d17">Getting the code on the chip</h2>
+<div class="outline-text-2" id="text-orge4d5d17">
 </div>
-<div id="outline-container-org0335f3f" class="outline-3">
-<h3 id="org0335f3f">Building</h3>
-<div class="outline-text-3" id="text-org0335f3f">
+<div id="outline-container-org9b6af62" class="outline-3">
+<h3 id="org9b6af62">Building</h3>
+<div class="outline-text-3" id="text-org9b6af62">
 <p>
 At this point we have all the files we need to build the code, so just go to a new empty directory and run
 </p>
@@ -686,9 +641,9 @@ Now in the build directory you'll have some build garbage, the link map <code>bl
 </div>
 </div>
 
-<div id="outline-container-org2539437" class="outline-3">
-<h3 id="org2539437">OpenOCD</h3>
-<div class="outline-text-3" id="text-org2539437">
+<div id="outline-container-org3ca0489" class="outline-3">
+<h3 id="org3ca0489">OpenOCD</h3>
+<div class="outline-text-3" id="text-org3ca0489">
 <p>
 The standard open source software for flashing the bluepill is <b>OpenOCD</b>. On educational/more-expensive boards there will be a secondary chip that helps you flash the microcontroller. But on cheaper and more practical chips this part is omitted (b/c in a sense it's a waste to have the same chip on every single board). So to flash the bluepill you will need something to do the flashing with. I'm using a knock off <code>ST-LINK v2</code> I purchased on Taobao. (note the wiring is in a different order on the board and programmer)
 </p>
@@ -711,7 +666,7 @@ OpenOCD's software setup is rather baroque - but the <a href="http://openocd.org
 The configuration is a bit finicky. For OpenOCD to automatically pick it up it needs to be called <code>openocd.cfg</code> and it needs to be in the directory where you run <code>openocd</code>.
 </p>
 <div class="org-src-container">
-<pre class="src src-c"><span style="color: #18b2b2;">source</span> [find interface/stlink-v2.cfg]
+<pre class="src src-c"><span style="color: #6434A3;">source</span> [find interface/stlink-v2.cfg]
 transport select hla_swd
 source [find target/stm32f1x_stlink.cfg]
 program blinky.elf verify reset exit
@@ -725,10 +680,10 @@ The finaly file isn't too complicated. It sets the interface type (ie the ST-LIN
 For convenience we should also tell CMake to copy this file over to the build directory
 </p>
 <div class="org-src-container">
-<pre class="src src-cmake">file(COPY
+<pre class="src src-cmake"><span style="color: #006699;">file</span>(COPY
   openocd.cfg
   DESTINATION
-  ${CMAKE_BINARY_DIR})
+  ${<span style="color: #BA36A5;">CMAKE_BINARY_DIR</span>})
 </pre>
 </div>
 
@@ -750,17 +705,17 @@ If it's not, Some things to double check:
 </div>
 </div>
 
-<div id="outline-container-org37dc695" class="outline-2">
-<h2 id="org37dc695">Intergrated Development</h2>
-<div class="outline-text-2" id="text-org37dc695">
+<div id="outline-container-orgca83993" class="outline-2">
+<h2 id="orgca83993">Intergrated Development</h2>
+<div class="outline-text-2" id="text-orgca83993">
 <p>
 One of the big bonuses of using CMake is that it will hook into existing tools very easily.
 </p>
 </div>
 
-<div id="outline-container-orgf85b15f" class="outline-3">
-<h3 id="orgf85b15f">GDB</h3>
-<div class="outline-text-3" id="text-orgf85b15f">
+<div id="outline-container-org5e07258" class="outline-3">
+<h3 id="org5e07258">GDB</h3>
+<div class="outline-text-3" id="text-org5e07258">
 <p>
 The first basic step is hookin' up a debugger.
 </p>
@@ -774,7 +729,7 @@ Once we have the right version of <b>GDB</b> the next part becomes super easy b/
 </p>
 
 <div class="org-src-container">
-<pre class="src src-c"><span style="color: #18b2b2;">source</span> [find interface/stlink-v2.cfg]
+<pre class="src src-c"><span style="color: #6434A3;">source</span> [find interface/stlink-v2.cfg]
 transport select hla_swd
 source [find target/stm32f1x_stlink.cfg]
 reset_config srst_nogate
@@ -825,9 +780,9 @@ Now you can set breakpoint, run code, inspect the stack and variables, etc. etc.
 </div>
 </div>
 
-<div id="outline-container-orga68600e" class="outline-3">
-<h3 id="orga68600e">KDevelop</h3>
-<div class="outline-text-3" id="text-orga68600e">
+<div id="outline-container-orgdb7a6f9" class="outline-3">
+<h3 id="orgdb7a6f9">KDevelop</h3>
+<div class="outline-text-3" id="text-orgdb7a6f9">
 <p>
 To demonstrate how flexible things get thanks to CMake, next I'll show you how to setup KDevelop to run everything for us. In principle this should work equally well with QtCreator or CLion or CQuery/Emacs. You can even hook up linters and other fancy Clang based tools now pretty easily. So this isn't an endorsement of KDevelop over the alternatives b/c after all it's sorta like Visual Studio - a big drop-box driven mess - but I'm just familiar with it and it's quick and easy to get up and running with a CMake project. We'll be able to jump around our code and refactor things in no time. The easiest way to get started is to just get the KDevelop AppImage from <a href="https://www.kdevelop.org/download">their website</a>. Download it, make it executable with <code>chmod +x $KDevelopAppImageFile</code> and run!
 </p>
@@ -865,25 +820,25 @@ But now we are also getting the benefits of CMake. You can now click on variable
 </div>
 
 
-<div id="outline-container-org8335255" class="outline-4">
-<h4 id="org8335255">Extras</h4>
-<div class="outline-text-4" id="text-org8335255">
+<div id="outline-container-orgcc50fbd" class="outline-4">
+<h4 id="orgcc50fbd">Extras</h4>
+<div class="outline-text-4" id="text-orgcc50fbd">
 <p>
 KDevelop unfortuantely has some very bizarre default working directories in their configurations&#x2026;
 </p>
 </div>
 
 <ul class="org-ul">
-<li><a id="org2ec0382"></a>Execute<br>
-<div class="outline-text-5" id="text-org2ec0382">
+<li><a id="org397c210"></a>Execute<br>
+<div class="outline-text-5" id="text-org397c210">
 <p>
 To make the <i>Execute</i> button flash the program to the chip go to <i>Run</i> &gt; <i>Configure Launches&#x2026;</i> and then hit <i>+ Add</i> in the top left and select your target's name from the drop down menu (mine is called <code>blinky.elf</code>). In the new screen on the right side, you want to change the <i>Executable</i> from <b>Project Target</b> to <b>Exectuable</b> and then put in <i>the full path</i> to openocd (mine is <code>/usr/bin/openocd</code>). We also need to set the <i>Working Directory</i> to be the build directory so it can find the <code>openocd.cfg</code> file we made. So now when we hit <b>Execute</b> on the top bar it will just run <code>openocd</code> in the build directory. The way we've set things up, this should flash the chip!
 </p>
 </div>
 </li>
 
-<li><a id="orgbca81fd"></a>Debug (WIP)<br>
-<div class="outline-text-5" id="text-orgbca81fd">
+<li><a id="org9bf526d"></a>Debug (WIP)<br>
+<div class="outline-text-5" id="text-org9bf526d">
 <p>
 In that same window you will notice there is a <b>Debug</b> submenu on the left under our target executable. It's probably possible to get the <code>OpenOCD/GDB</code> setup running here as well - but unfortunately here things just got too ugly for me and I couldn't find a sane way to set this up (and I kept having issues where KDevelop wasn't cleaning up the OpenOCD processes correctly). If you find a clean way to get this working then please make an issue/PR and tell me about it :)
 </p>
@@ -911,7 +866,7 @@ Once opened in Emacs:<br>
 </div>
 <div id="postamble" class="status">
 <p class="author">Author: George Kontsevich</p>
-<p class="date">Created: 2019-03-02 六 11:26</p>
+<p class="date">Created: 2019-07-25 Thu 11:14</p>
 <p class="validation"><a href="http://validator.w3.org/check?uri=referer">Validate</a></p>
 </div>
 </body>

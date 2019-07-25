@@ -5,10 +5,12 @@
 #+HTML_DOCTYPE: html5
 #+HTML_LINK_UP: ..
 #+HTML_LINK_HOME: ..
-#+HTML_HEAD: <link rel="stylesheet" type="text/css" href="../static/worg.css" />
-#+HTML_MATHJAX: path: "https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS_HTML"
+#+HTML_HEAD: <link rel="stylesheet" type="text/css" href="../web/worg.css" />
+#+HTML_HEAD_EXTRA: <link rel="shortcut icon" href="../web/panda.svg" type="image/x-icon">
+#+HTML_MATHJAX: path: "../MathJax/MathJax.js?config=TeX-AMS_CHTML"
 #+OPTIONS: html-style:nil
 #+OPTIONS: num:nil
+#+OPTIONS: html-scripts:nil
 
 * Intro
 In this guide we will setup a simple minimal blinky for the Bluepill - a very cheap board available from China with the =STM32F103C8T6= chip on it. They cost a smidge over one dollar each. 
