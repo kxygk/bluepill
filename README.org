@@ -13,6 +13,12 @@
 #+OPTIONS: html-scripts:nil
 
 * Intro
+#+BEGIN_QUOTE
+*Note:* Since I've written this there have been several efforts to build a complete CMake system. The most complete and impressive one I've seen is https://github.com/ObKo/stm32-cmake
+
+While this page will still have good info and is educational (esp concerning OpenOCD/GDB) - if you want to do a serious project please take a look at ObKo's template/framework. I've only used it a bit - but it seems very polished and is similar in principle to what I've done. It supports pretty much all STM32 chips so it's not quite as simple as what I've done here
+#+END_QUOTE
+
 In this guide we will setup a simple minimal blinky for the Bluepill - a very cheap board available from China with the =STM32F103C8T6= chip on it. They cost a smidge over one dollar each. 
 
 I will be building a blinky using STM32's Low Level API (explained below). I noticed everyone seems to still be using Make so I've tried to change things up and write up a whole toolchain for this board in CMake so hopefully this guide will provide something new and interesting for some people. At the end I will show how CMake allows us to plug in our project into basically any modern IDE - and we'll get the whole thing running just using GCC and OpenOCD. I have virtually no experience with embedded development, so if there are mistakes or you just want to tell me I'm an idiot, please leave an issue on [[https://github.com/geokon-gh/bluepill][the github repo]]. Note that a big part of the guts of this project are in the submodule which has [[https://github.com/geokon-gh/stm32f1-ll/][its own repo]]
